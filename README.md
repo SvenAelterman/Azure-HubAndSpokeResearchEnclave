@@ -17,11 +17,11 @@ To accelerate the deployment of a hub-and-spoke architecture for building secure
 
 ### Compliance
 
-The goal of the project is that the templates will deploy resources that are compliant with the following frameworks:
+The goal of the project is that the templates will deploy resources that are compliant with the following frameworks (according to the Azure Commercial built-in initiatives):
 
-- HIPAA/HITRUST (according to the Azure Commercial built-in initiative)
-- NIST 800-171 R2 (according to the Azure Commercial built-in initiative)
-- FedRAMP Moderate (according to the Azure Commercial built-in initiative)
+- HIPAA/HITRUST
+- NIST 800-171 R2
+- FedRAMP Moderate
 
 Compliance with all the above frameworks is a work-in-progress.
 
