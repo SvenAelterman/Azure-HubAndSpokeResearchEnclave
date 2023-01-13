@@ -19,3 +19,4 @@ To accelerate the deployment of a hub-and-spoke architecture for building secure
 
 - Azure TRE: <https://microsoft.github.io/AzureTRE/>
 - Standalone Azure Secure Enclave for Research: <https://github.com/microsoft/Azure-Secure-Enclave-for-Research>
+- Mission Landing Zone (MLZ): <https://github.com/Azure/MissionLZ>
