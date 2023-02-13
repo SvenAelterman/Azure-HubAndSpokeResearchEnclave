@@ -31,8 +31,10 @@ param segmentSeparator string = '-'
 @description('If true, when creating a short name, vowels will first be removed from the workload name.')
 param useRemoveVowelStrategy bool = false
 
+@maxValue(13)
 param addRandomChars int = 0
-param time string = utcNow()
+@description('When using addRandomChars > 0, generated resource names will be idempotent for the same resource group, workload, resource location, environment, sequence, and resource type. If an additional discrimnator is required, provide the value here.')
+param additionalRandomInitializer string = ''
 
 // Define the behavior of this module for each supported resource type
 var Defs = {
@@ -43,7 +45,7 @@ var Defs = {
   }
   st: {
     lowerCase: true
-    maxLength: 23
+    maxLength: 24
     alwaysRemoveSegmentSeparator: true
   }
   cr: {
@@ -85,7 +87,8 @@ var shortLocationValue = shortLocations[location]
 var sequenceFormatted = format('{0:00}', sequence)
 
 // Just in case we need them
-var randomChars = addRandomChars > 0 ? take(uniqueString(workloadName, time), addRandomChars) : ''
+// For idempotency, deployments of the same type, workload, environment, sequence, and resource group will yield the same resource name
+var randomChars = addRandomChars > 0 ? take(uniqueString(subscription().subscriptionId, workloadName, location, environment, string(sequence), resourceType, additionalRandomInitializer), addRandomChars) : ''
 
 // Remove hyphens from the naming convention if needed
 var namingConventionSegmentSeparatorProcessed = doRemoveSegmentSeparator ? replace(namingConvention, segmentSeparator, '') : namingConvention
