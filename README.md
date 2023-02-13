@@ -12,8 +12,9 @@ To accelerate the deployment of a hub-and-spoke architecture for building secure
 
 ## Features
 
-- Optional use of customer-managed keys for encryption at rest.
+- Optional use of customer-managed keys for encryption at rest (required for FedRAMP Moderate compliance).
 - Optional peering to a central hub.
+- Choice between Active Directory or Azure Active Directory for device authentication and management. Optionally, use Intune for device management with AAD.
 
 ### Compliance
 
