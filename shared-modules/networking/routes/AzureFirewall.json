@@ -1,0 +1,9 @@
+[
+    {
+        "name": "Internet-Direct",
+        "properties": {
+            "nextHopType": "Internet",
+            "addressPrefix": "0.0.0.0/0"
+        }
+    }
+]

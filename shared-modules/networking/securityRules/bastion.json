@@ -1,0 +1,116 @@
+[
+	{
+		"name": "Allow_Inbound_HTTPS",
+		"properties": {
+			"direction": "Inbound",
+			"priority": 200,
+			"protocol": "TCP",
+			"access": "Allow",
+			"sourceAddressPrefix": "Internet",
+			"sourcePortRange": "*",
+			"destinationAddressPrefix": "*",
+			"destinationPortRange": "443"
+		}
+	},
+	{
+		"name": "Allow_Inbound_GatewayManager",
+		"properties": {
+			"direction": "Inbound",
+			"priority": 210,
+			"protocol": "TCP",
+			"access": "Allow",
+			"sourceAddressPrefix": "GatewayManager",
+			"sourcePortRange": "*",
+			"destinationAddressPrefix": "*",
+			"destinationPortRange": "443"
+		}
+	},
+	{
+		"name": "Allow_Inbound_BastionHostCommunication",
+		"properties": {
+			"direction": "Inbound",
+			"priority": 220,
+			"protocol": "TCP",
+			"access": "Allow",
+			"sourceAddressPrefix": "VirtualNetwork",
+			"sourcePortRange": "*",
+			"destinationAddressPrefix": "VirtualNetwork",
+			"destinationPortRanges": [
+				"5701",
+				"8080"
+			]
+		}
+	},
+	{
+		"name": "Allow_Outbound_SSH",
+		"properties": {
+			"direction": "Outbound",
+			"priority": 200,
+			"protocol": "*",
+			"access": "Allow",
+			"sourceAddressPrefix": "*",
+			"sourcePortRange": "*",
+			"destinationAddressPrefix": "VirtualNetwork",
+			"destinationPortRanges": [
+				"22"
+			]
+		}
+	},
+	{
+		"name": "Allow_Outbound_RDP",
+		"properties": {
+			"direction": "Outbound",
+			"priority": 201,
+			"protocol": "*",
+			"access": "Allow",
+			"sourceAddressPrefix": "*",
+			"sourcePortRange": "*",
+			"destinationAddressPrefix": "VirtualNetwork",
+			"destinationPortRanges": [
+				"3389"
+			]
+		}
+	},
+	{
+		"name": "Allow_Outbound_HTTPS_AzureCloud",
+		"properties": {
+			"direction": "Outbound",
+			"priority": 210,
+			"protocol": "TCP",
+			"access": "Allow",
+			"sourceAddressPrefix": "*",
+			"sourcePortRange": "*",
+			"destinationAddressPrefix": "AzureCloud",
+			"destinationPortRange": "443"
+		}
+	},
+	{
+		"name": "Allow_Outbound_BastionHostCommunication",
+		"properties": {
+			"direction": "Outbound",
+			"priority": 220,
+			"protocol": "TCP",
+			"access": "Allow",
+			"sourceAddressPrefix": "VirtualNetwork",
+			"sourcePortRange": "*",
+			"destinationAddressPrefix": "VirtualNetwork",
+			"destinationPortRanges": [
+				"5701",
+				"8080"
+			]
+		}
+	},
+	{
+		"name": "Allow_Outbound_HTTP_SessionInformation",
+		"properties": {
+			"direction": "Outbound",
+			"priority": 230,
+			"protocol": "*",
+			"access": "Allow",
+			"sourceAddressPrefix": "*",
+			"sourcePortRange": "*",
+			"destinationAddressPrefix": "Internet",
+			"destinationPortRange": "80"
+		}
+	}
+]
