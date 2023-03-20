@@ -45,6 +45,9 @@ param complianceTarget string = 'NIST80053R5'
 #disable-next-line no-unused-params // LATER: Future use
 param logonType string
 
+@description('If true, will configure the deployment of AVD to make the AVD session hosts usable as research VMs. This will give full desktop access, flow the AVD traffic through the firewall, etc.')
+param useSessionHostAsResearchVm bool = false
+
 /*
  * Optional deployment elements for the Research Hub
  */
@@ -99,6 +102,9 @@ var usePrivateEndpoints = (complianceTarget == 'NIST80053R5' || complianceTarget
 #disable-next-line no-unused-vars // LATER: Future use
 var useCMK = (complianceTarget == 'NIST80053R5') ? true : false
 
+#disable-next-line no-unused-vars // LATER: Future use
+var avdTrafficThroughFirewall = useSessionHostAsResearchVm
+
 /*
  * DEFINE THE RESEARCH HUB VIRTUAL NETWORK'S SUBNETS
  * 
@@ -114,6 +120,12 @@ var requiredSubnets = {
     delegation: ''
   }
   AzureFirewallSubnet: {
+    serviceEndpoints: []
+    routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
+    //securityRules: [] Azure Firewall does not support NSGs on its subnet
+    delegation: ''
+  }
+  AzureFirewallManagementSubnet: {
     serviceEndpoints: []
     routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
     //securityRules: [] Azure Firewall does not support NSGs on its subnet
@@ -155,7 +167,7 @@ var networkAddressSplit = split(networkAddressSpace, '/')
 var networkAddress = networkAddressSplit[0]
 var networkAddressOctets = split(networkAddress, '.')
 
-// Create a structure for the subnets' address spaces with placeholders for octet3 and/or octet4 // TODO: Will be removed with availability of Bicep cidr() function
+// Create a structure for the subnets' address spaces with placeholders for octet3 and/or octet4 // HACK: Will be removed with availability of Bicep cidr() function
 var subnetAddressBase = '${networkAddressOctets[0]}.${networkAddressOctets[1]}.${subnetCidr <= 26 ? '{octet3}' : networkAddressOctets[3]}.${subnetCidr > 26 ? '{octet4}' : '0'}/${subnetCidr}'
 
 var actualSubnets = [for (subnet, i) in items(subnets): {
@@ -166,6 +178,8 @@ var actualSubnets = [for (subnet, i) in items(subnets): {
 }]
 
 var actualSubnetObject = reduce(actualSubnets, {}, (cur, next) => union(cur, next))
+
+//------------------------------- END VARIABLES --------------------------------
 
 /*
  * CREATE THE RESEARCH HUB VIRTUAL NETWORK
@@ -188,5 +202,21 @@ module networkModule '../shared-modules/networking/network.bicep' = {
     vnetAddressPrefix: networkAddressSpace
 
     tags: actualTags
+  }
+}
+
+/*
+ * Deploy the research hub firewall
+ */
+
+module azureFirewallModule 'hub-modules/azureFirewall.bicep' = {
+  name: replace(deploymentNameStructure, '{rtype}', 'azfw')
+  scope: networkRg
+  params: {
+    firewallManagementSubnetId: networkModule.outputs.createdSubnets.AzureFirewallManagementSubnet.id
+    firewallSubnetId: networkModule.outputs.createdSubnets.AzureFirewallSubnet.id
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'firewall')
+    tags: tags
+    location: location
   }
 }

@@ -1,0 +1,103 @@
+[
+	{
+		"ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+		"action": {
+			"type": "Allow"
+		},
+		"rules": [
+			{
+				"ruleType": "ApplicationRule",
+				"name": "Azure_Portal",
+				"protocols": [
+					{
+						"protocolType": "Http",
+						"port": 80
+					},
+					{
+						"protocolType": "Https",
+						"port": 443
+					}
+				],
+				"fqdnTags": [],
+				"webCategories": [],
+				"targetFqdns": [
+					"*.portal.azure.com",
+					"*.portal.azure.net",
+					"portal.azure.com",
+					"portal.azure.net"
+				],
+				"targetUrls": [],
+				"terminateTLS": false,
+				"sourceAddresses": [
+					"*"
+				],
+				"destinationAddresses": [],
+				"sourceIpGroups": []
+			},
+			{
+				"ruleType": "ApplicationRule",
+				"name": "Azure_ARM_API",
+				"protocols": [
+					{
+						"protocolType": "Http",
+						"port": 80
+					},
+					{
+						"protocolType": "Https",
+						"port": 443
+					}
+				],
+				"fqdnTags": [],
+				"webCategories": [],
+				"targetFqdns": [
+					"management.azure.com"
+				],
+				"targetUrls": [],
+				"terminateTLS": false,
+				"sourceAddresses": [
+					"*"
+				],
+				"destinationAddresses": [],
+				"sourceIpGroups": []
+			}
+		],
+		"name": "AzurePortal",
+		"priority": 1000
+	},
+	{
+		"ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+		"action": {
+			"type": "Allow"
+		},
+		"rules": [
+			{
+				"ruleType": "ApplicationRule",
+				"name": "Monitor_Core",
+				"protocols": [
+					{
+						"protocolType": "Http",
+						"port": 80
+					},
+					{
+						"protocolType": "Https",
+						"port": 443
+					}
+				],
+				"fqdnTags": [],
+				"webCategories": [],
+				"targetFqdns": [
+					"*.monitor.core.windows.net"
+				],
+				"targetUrls": [],
+				"terminateTLS": false,
+				"sourceAddresses": [
+					"*"
+				],
+				"destinationAddresses": [],
+				"sourceIpGroups": []
+			}
+		],
+		"name": "Monitor",
+		"priority": 500
+	}
+]

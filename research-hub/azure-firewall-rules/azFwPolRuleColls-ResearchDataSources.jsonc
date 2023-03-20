@@ -1,0 +1,11 @@
+[
+	{
+		"ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+		"action": {
+			"type": "Allow"
+		},
+		"rules": [],
+		"name": "ResearchDataSources_AllProjects",
+		"priority": 100
+	}
+]

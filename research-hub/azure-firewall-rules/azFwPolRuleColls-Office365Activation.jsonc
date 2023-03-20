@@ -1,0 +1,101 @@
+[
+	{
+		"ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+		"action": {
+			"type": "Allow"
+		},
+		"rules": [
+			{
+				"ruleType": "ApplicationRule",
+				"name": "activation",
+				"protocols": [
+					{
+						"protocolType": "Http",
+						"port": 80
+					},
+					{
+						"protocolType": "Https",
+						"port": 443
+					}
+				],
+				"fqdnTags": [],
+				"webCategories": [],
+				"targetFqdns": [
+					"activation.sls.microsoft.com"
+				],
+				"targetUrls": [],
+				"terminateTLS": false,
+				"sourceAddresses": [
+					"*"
+				],
+				"destinationAddresses": [],
+				"sourceIpGroups": []
+			}
+		],
+		"name": "OfficeActivation",
+		"priority": 100
+	},
+	{
+		"ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+		"action": {
+			"type": "Allow"
+		},
+		"rules": [
+			{
+				"ruleType": "ApplicationRule",
+				"name": "CRL",
+				"protocols": [
+					{
+						"protocolType": "Http",
+						"port": 80
+					},
+					{
+						"protocolType": "Https",
+						"port": 443
+					}
+				],
+				"fqdnTags": [],
+				"webCategories": [],
+				"targetFqdns": [
+					"crl.microsoft.com",
+					"*.entrust.net",
+					"*.geotrust.com",
+					"*.omniroot.com",
+					"*.public-trust.com",
+					"*.symcb.com",
+					"*.symcd.com",
+					"*.verisign.com",
+					"*.verisign.net",
+					"apps.identrust.com",
+					"cacerts.digicert.com",
+					"cert.int-x3.letsencrypt.org",
+					"crl.globalsign.com",
+					"crl.globalsign.net",
+					"crl.identrust.com",
+					"crl3.digicert.com",
+					"crl4.digicert.com",
+					"isrg.trustid.ocsp.identrust.com",
+					"mscrl.microsoft.com",
+					"ocsp.digicert.com",
+					"ocsp.globalsign.com",
+					"ocsp.msocsp.com",
+					"ocsp2.globalsign.com",
+					"ocspx.digicert.com",
+					"secure.globalsign.com",
+					"www.digicert.com",
+					"www.microsoft.com",
+					"ocsp.int-x3.letsencrypt.org"
+				],
+				"targetUrls": [],
+				"terminateTLS": false,
+				"sourceAddresses": [
+					"*"
+				],
+				"destinationAddresses": [],
+				"sourceIpGroups": []
+			}
+		],
+		"name": "OfficeCertificates",
+		"priority": 200
+	}
+]
