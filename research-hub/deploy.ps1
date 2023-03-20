@@ -10,6 +10,12 @@ param (
 
 Select-AzSubscription -Subscription $TargetSubscriptionId
 
-New-AzDeployment -TemplateFile .\main.bicep -TemplateParameterFile .\main.sample-parameters-aad.json `
+$DeploymentResults = New-AzDeployment -TemplateFile .\main.bicep -TemplateParameterFile .\main.sample-parameters-aad.json `
     -Location $Location
 
+if ($DeploymentResults.ProvisioningStatus -eq 'Succeeded') {
+    Write-Host "🔥 Deployment successful!"
+}
+else {
+    $DeploymentResults
+}
