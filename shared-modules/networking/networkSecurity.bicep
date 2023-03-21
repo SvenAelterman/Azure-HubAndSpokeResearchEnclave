@@ -20,8 +20,9 @@ module nsgModule 'nsg.bicep' = [for subnet in subnetArray: {
   }
 }]
 
-output nsgIds array = [for i in range(0, length(subnetArray)): {
+output networkSecurityGroups array = [for i in range(0, length(subnetArray)): {
   '${subnetArray[i].key}': {
     id: nsgModule[i].outputs.nsgId
+    name: nsgModule[i].outputs.nsgName
   }
 }]

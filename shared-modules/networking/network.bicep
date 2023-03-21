@@ -45,7 +45,7 @@ module networkSecurityModule 'networkSecurity.bicep' = {
   }
 }
 
-var nsgIds = reduce(networkSecurityModule.outputs.nsgIds, {}, (cur, next) => union(cur, next))
+var nsgIds = reduce(networkSecurityModule.outputs.networkSecurityGroups, {}, (cur, next) => union(cur, next))
 
 // Create a route table for each subnet that requires one
 module networkRoutingModule 'networkRouting.bicep' = {
@@ -59,7 +59,7 @@ module networkRoutingModule 'networkRouting.bicep' = {
   }
 }
 
-var routeTableIds = reduce(networkRoutingModule.outputs.routeTableIds, {}, (cur, next) => union(cur, next))
+var routeTables = reduce(networkRoutingModule.outputs.routeTables, {}, (cur, next) => union(cur, next))
 
 // This is the parent module to deploy a VNet with subnets and output the subnets with their IDs as a custom object
 module vNetModule 'vnet.bicep' = {
@@ -70,7 +70,7 @@ module vNetModule 'vnet.bicep' = {
     vnetName: virtualNetworkName
     vnetAddressPrefix: vnetAddressPrefix
     networkSecurityGroups: nsgIds
-    routeTables: routeTableIds
+    routeTables: routeTables
     tags: tags
   }
 }

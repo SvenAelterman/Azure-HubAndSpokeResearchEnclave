@@ -65,7 +65,9 @@ output actualSubnets array = [for i in range(0, length(subnetDefsArray)): {
     id: subnetRes[i].id
     addressPrefix: subnetRes[i].properties.addressPrefix
     routeTableId: contains(subnetRes[i].properties, 'routeTable') ? subnetRes[i].properties.routeTable.id : null
+    routeTableName: contains(subnetRes[i].properties, 'routeTable') ? routeTables[subnetRes[i].name].name : null
     networkSecurityGroupId: contains(subnetRes[i].properties, 'networkSecurityGroup') ? subnetRes[i].properties.networkSecurityGroup.id : null
+    networkSecurityGroupName: contains(subnetRes[i].properties, 'networkSecurityGroup') ? networkSecurityGroups[subnetRes[i].name].name : null
     // Add as many additional subnet properties as needed downstream
   }
 }]

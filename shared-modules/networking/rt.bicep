@@ -4,7 +4,7 @@ param routes array
 
 param tags object = {}
 
-resource rt 'Microsoft.Network/routeTables@2022-01-01' = {
+resource rt 'Microsoft.Network/routeTables@2022-01-01' = if (!empty(rtName)) {
   name: rtName
   location: location
   properties: {
@@ -15,4 +15,5 @@ resource rt 'Microsoft.Network/routeTables@2022-01-01' = {
   tags: tags
 }
 
-output routeTableId string = rt.id
+output routeTableId string = !empty(rtName) ? rt.id : ''
+output routeTableName string = !empty(rtName) ? rt.name : ''

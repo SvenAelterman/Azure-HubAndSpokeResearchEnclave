@@ -14,3 +14,4 @@ resource nsg 'Microsoft.Network/networkSecurityGroups@2022-01-01' = {
 }
 
 output nsgId string = nsg.id
+output nsgName string = nsg.name

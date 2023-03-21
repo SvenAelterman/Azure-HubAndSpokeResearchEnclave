@@ -21,8 +21,9 @@ module rtModule 'rt.bicep' = [for subnet in subnetArray: {
 }]
 
 // Output the created route tables as an object array (which can be union'd later)
-output routeTableIds array = [for i in range(0, length(subnetArray)): {
+output routeTables array = [for i in range(0, length(subnetArray)): {
   '${subnetArray[i].key}': {
     id: rtModule[i].outputs.routeTableId
+    name: rtModule[i].outputs.routeTableName
   }
 }]
