@@ -133,14 +133,14 @@ var requiredSubnets = {
   }
   avd: {
     serviceEndpoints: []
-    routes: []
+    routes: [] // Routes through the firewall will be added later
     securityRules: []
     delegation: ''
   }
   airlock: {
     serviceEndpoints: []
-    routes: []
-    securityRules: []
+    routes: [] // Routes through the firewall will be added later
+    securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
     delegation: ''
   }
 }
@@ -220,3 +220,55 @@ module azureFirewallModule 'hub-modules/azureFirewall.bicep' = {
     location: location
   }
 }
+
+/*
+ * Deploy Azure Virtual Desktop
+ */
+
+// TODO: Move this to the AVD module?
+// Modify the AVD route table to route traffic through the Azure Firewall
+module avdRouteTableModule '../shared-modules/networking/rt.bicep' = {
+  name: replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw')
+  scope: networkRg
+  params: {
+    location: location
+    // TODO: Move routes to JSON file and replace tokens for FW IP
+    routes: [
+      {
+        name: 'Internet_via_Firewall'
+        properties: {
+          addressPrefix: '0.0.0.0/0'
+          nextHopType: 'VirtualAppliance'
+          nextHopIpAddress: azureFirewallModule.outputs.fwPrIp
+        }
+      }
+      // TODO: Add routes to bypass FW for updates, Monitor, and conditionally AVD
+    ]
+    rtName: networkModule.outputs.createdSubnets.avd.routeTableName
+  }
+}
+
+resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
+  name: replace(rgNamingStructure, '{subWorkloadName}', 'avd')
+  location: location
+}
+
+// TODO: Customize AVD module to support full desktop for researchers, based on param value
+// module avd 'hub-modules/avd/avd.bicep' = {
+//   name: replace(deploymentNameStructure, '{rtype}', 'avd')
+//   scope: avdRg
+
+//   params: {
+//     avdSubnetId: networkModule.outputs.createdSubnets.avd.id
+//     avdVmHostNameStructure: 'rh-avd-vm'
+//     deploymentNameStructure: deploymentNameStructure
+//     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
+//     location: location
+//     tags: tags
+//   }
+
+//   dependsOn: [
+//     avdRouteTableModule
+//     azureFirewallModule
+//   ]
+// }
