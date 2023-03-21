@@ -1,3 +1,6 @@
+#Requires -Modules "Az"
+#Requires -PSEdition Core
+
 [CmdletBinding()]
 param (
     # [Parameter()]
@@ -5,15 +8,18 @@ param (
     [Parameter(Mandatory)]
     [string]$TargetSubscriptionId,
     [Parameter(Mandatory)]
-    [string]$Location
+    [string]$Location,
+    [Parameter(Mandatory)]
+    [string]$TemplateParameterFile
 )
 
 Select-AzSubscription -Subscription $TargetSubscriptionId
 
-$DeploymentResults = New-AzDeployment -TemplateFile .\main.bicep -TemplateParameterFile .\main.sample-parameters-aad.json `
+# TODO: Provide a name with timestamp for the deployment
+$DeploymentResults = New-AzDeployment -TemplateFile '.\main.bicep' -TemplateParameterFile $TemplateParameterFile `
     -Location $Location
 
-if ($DeploymentResults.ProvisioningStatus -eq 'Succeeded') {
+if ($DeploymentResults.ProvisioningState -eq 'Succeeded') {
     Write-Host "🔥 Deployment successful!"
 }
 else {
