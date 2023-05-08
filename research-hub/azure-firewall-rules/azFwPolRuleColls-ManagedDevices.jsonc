@@ -293,7 +293,7 @@
 			},
 			{
 				"ruleType": "ApplicationRule",
-				"name": "aadcdn_msauth_net",
+				"name": "AADCDN",
 				"protocols": [
 					{
 						"protocolType": "Http",
@@ -307,33 +307,10 @@
 				"fqdnTags": [],
 				"webCategories": [],
 				"targetFqdns": [
-					"aadcdn.msauth.net"
-				],
-				"targetUrls": [],
-				"terminateTLS": false,
-				"sourceAddresses": [
-					"*"
-				],
-				"destinationAddresses": [],
-				"sourceIpGroups": []
-			},
-			{
-				"ruleType": "ApplicationRule",
-				"name": "aadcdn_msftauth.net",
-				"protocols": [
-					{
-						"protocolType": "Http",
-						"port": 80
-					},
-					{
-						"protocolType": "Https",
-						"port": 443
-					}
-				],
-				"fqdnTags": [],
-				"webCategories": [],
-				"targetFqdns": [
-					"aadcdn.msftauth.net"
+					"aadcdn.msftauth.net",
+					"aadcdn.msauth.net",
+					"ajax.aspnetcdn.com",
+					"aadcdn.msauthimages.net"
 				],
 				"targetUrls": [],
 				"terminateTLS": false,
@@ -359,7 +336,9 @@
 				"fqdnTags": [],
 				"webCategories": [],
 				"targetFqdns": [
-					"login.microsoftonline.com"
+					"login.microsoftonline.com",
+					"login.windows.net",
+					"login.microsoft.com"
 				],
 				"targetUrls": [],
 				"terminateTLS": false,
