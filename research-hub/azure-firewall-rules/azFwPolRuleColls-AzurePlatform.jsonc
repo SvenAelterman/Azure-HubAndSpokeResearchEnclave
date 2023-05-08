@@ -59,6 +59,32 @@
 				],
 				"destinationAddresses": [],
 				"sourceIpGroups": []
+			},
+			{
+				"ruleType": "ApplicationRule",
+				"name": "API",
+				"protocols": [
+					{
+						"protocolType": "Http",
+						"port": 80
+					},
+					{
+						"protocolType": "Https",
+						"port": 443
+					}
+				],
+				"fqdnTags": [],
+				"webCategories": [],
+				"targetFqdns": [
+					"service.bmx.azure.com"
+				],
+				"targetUrls": [],
+				"terminateTLS": false,
+				"sourceAddresses": [
+					"*"
+				],
+				"destinationAddresses": [],
+				"sourceIpGroups": []
 			}
 		],
 		"name": "AzurePortal",
