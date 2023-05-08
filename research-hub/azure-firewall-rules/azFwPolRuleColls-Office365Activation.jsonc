@@ -21,7 +21,15 @@
 				"fqdnTags": [],
 				"webCategories": [],
 				"targetFqdns": [
-					"activation.sls.microsoft.com"
+					// From https://learn.microsoft.com/en-us/office/troubleshoot/activation/sign-in-issues and https://learn.microsoft.com/en-us/office/troubleshoot/activation/temporary-server-issues
+					// Also requires the managed devices rules
+					"activation.sls.microsoft.com",
+					"officecdn.microsoft.com",
+					"ols.officeapps.live.com",
+					"odc.officeapps.live.com",
+					"Office15client.microsoft.com",
+					"cdn.odc.officeapps.live.com",
+					"officeclient.microsoft.com"
 				],
 				"targetUrls": [],
 				"terminateTLS": false,
