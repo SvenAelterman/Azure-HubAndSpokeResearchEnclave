@@ -14,6 +14,7 @@ param location string = deployment().location
 @description('The deployment sequence. Each new sequence number will create a new deployment.')
 param sequence int = 1
 
+// TODO: "Environment" is going to be difficult to disambiguate. Public and Gov cloud are also called "environments."
 @description('A maximum four-letter moniker for the environment type, such as \'dev\', \'test\', etc.')
 @allowed([
   'dev'
@@ -150,7 +151,7 @@ var AzureBastionSubnet = deployBastion ? {
   AzureBastionSubnet: {
     serviceEndpoints: []
     //routes: [] Bastion doesn't support routes
-    securityRules: loadJsonContent('../shared-modules/networking/securityRules/bastion.json')
+    securityRules: loadJsonContent('./hub-modules/networking/securityRules/bastion.json')
     delegation: ''
   }
 } : {}
@@ -210,7 +211,7 @@ module networkModule '../shared-modules/networking/network.bicep' = {
  */
 
 module azureFirewallModule 'hub-modules/azureFirewall.bicep' = {
-  name: replace(deploymentNameStructure, '{rtype}', 'azfw')
+  name: take(replace(deploymentNameStructure, '{rtype}', 'azfw'), 64)
   scope: networkRg
   params: {
     firewallManagementSubnetId: networkModule.outputs.createdSubnets.AzureFirewallManagementSubnet.id
@@ -222,13 +223,29 @@ module azureFirewallModule 'hub-modules/azureFirewall.bicep' = {
 }
 
 /*
+ * Optionally, deploy Azure Bastion
+ */
+
+module bastionModule 'hub-modules/networking/bastion.bicep' = if (deployBastion) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'bas'), 64)
+  scope: networkRg
+  params: {
+    location: location
+    bastionSubnetId: networkModule.outputs.createdSubnets.AzureBastionSubnet.id
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'bas')
+  }
+}
+
+// TODO: Deploy firewall rules to allow Bastion to access spoke via RDP/SSH? --> That's a spoke deployment consideration.
+
+/*
  * Deploy Azure Virtual Desktop
  */
 
 // TODO: Move this to the AVD module?
 // Modify the AVD route table to route traffic through the Azure Firewall
 module avdRouteTableModule '../shared-modules/networking/rt.bicep' = {
-  name: replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw')
+  name: take(replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw'), 64)
   scope: networkRg
   params: {
     location: location
@@ -249,13 +266,13 @@ module avdRouteTableModule '../shared-modules/networking/rt.bicep' = {
 }
 
 resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
-  name: replace(rgNamingStructure, '{subWorkloadName}', 'avd')
+  name: take(replace(rgNamingStructure, '{subWorkloadName}', 'avd'), 64)
   location: location
 }
 
 // TODO: Customize AVD module to support full desktop for researchers, based on param value
 // module avd 'hub-modules/avd/avd.bicep' = {
-//   name: replace(deploymentNameStructure, '{rtype}', 'avd')
+//   name: take(replace(deploymentNameStructure, '{rtype}', 'avd'), 64)
 //   scope: avdRg
 
 //   params: {

@@ -5,7 +5,7 @@
         "logonType": {
             "value": "aad",
             "metadata": {
-                "description": "Use Azure Active Directory"
+                "description": "aad: Use Azure Active Directory; ad: Use Active Directory (or AADDS)"
             }
         },
         "tags": {
@@ -14,7 +14,7 @@
             }
         },
         "addAutoDateCreatedTag": {
-            "value": true
+            "value": false
         },
         "addDateModifiedTag": {
             "value": true
