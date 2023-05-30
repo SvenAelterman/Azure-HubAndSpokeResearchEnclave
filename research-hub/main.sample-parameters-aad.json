@@ -20,7 +20,20 @@
             "value": true
         },
         "autoDate": {
-            "value": "2023-03-17"
+            "value": "2023-05-30"
+        },
+        "networkAddressSpace": {
+            "value": "10.40.0.0/16"
+        },
+        "additionalSubnets": {
+            "value": {
+                "aadds": {
+                    "serviceEndpoints": [],
+                    "securityRules": [],
+                    "delegation": "",
+                    "order": 6
+                }
+            }
         }
     }
 }

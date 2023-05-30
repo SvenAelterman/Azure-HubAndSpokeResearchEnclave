@@ -14,7 +14,7 @@ param location string = deployment().location
 @description('The deployment sequence. Each new sequence number will create a new deployment.')
 param sequence int = 1
 
-// TODO: "Environment" is going to be difficult to disambiguate. Public and Gov cloud are also called "environments."
+// TODO: "Environment" is going to be difficult to disambiguate. Public and Gov cloud are also called "environments." --> Rename to "purpose"?
 @description('A maximum four-letter moniker for the environment type, such as \'dev\', \'test\', etc.')
 @allowed([
   'dev'
@@ -60,13 +60,16 @@ param deployBastion bool = true
  * Network configuration parameters for the research hub
  */
 
-@description('The virtual network\'s address space in CIDR notation, e.g. 10.0.0.0/16. Supports IPv4 only. The last octet must be 0. The maximum CIDR length is 24.')
-param networkAddressSpace string = '10.40.0.0/16'
+@description('The virtual network\'s address space in CIDR notation, e.g. 10.0.0.0/16. The last octet must be 0. The maximum IPv4 CIDR length is 24. The IPv6 CIDR length should be 64.')
+param networkAddressSpace string
 
 // HACK: Setting to fixed value of 24 until Bicep's native cidr() function is available
 @maxValue(24)
 @minValue(24)
 param subnetCidr int = 24
+
+@description('Any additional subnets for the hub virtual network.')
+param additionalSubnets object = {}
 
 /*
  * Optional control parameters
@@ -119,62 +122,59 @@ var requiredSubnets = {
     routes: []
     securityRules: []
     delegation: ''
+    order: 5
   }
   AzureFirewallSubnet: {
     serviceEndpoints: []
     routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
-    //securityRules: [] Azure Firewall does not support NSGs on its subnet
+    //securityRules: [] Azure Firewall does not support NSGs on its subnets
     delegation: ''
+    order: 4
   }
   AzureFirewallManagementSubnet: {
     serviceEndpoints: []
     routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
-    //securityRules: [] Azure Firewall does not support NSGs on its subnet
+    //securityRules: [] Azure Firewall does not support NSGs on its subnets
     delegation: ''
+    order: 3
   }
   avd: {
     serviceEndpoints: []
     routes: [] // Routes through the firewall will be added later
     securityRules: []
     delegation: ''
+    order: 1
   }
   airlock: {
     serviceEndpoints: []
     routes: [] // Routes through the firewall will be added later
     securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
     delegation: ''
+    order: 0
   }
 }
 
-// TODO: Consider fixing the addressPrefix (or value of octet3/4 offset) of optional subnets so upon reconfiguration, there won't be changing address ranges
 var AzureBastionSubnet = deployBastion ? {
   AzureBastionSubnet: {
     serviceEndpoints: []
     //routes: [] Bastion doesn't support routes
     securityRules: loadJsonContent('./hub-modules/networking/securityRules/bastion.json')
     delegation: ''
+    order: 2
   }
 } : {}
 
-var subnets = union(requiredSubnets, AzureBastionSubnet)
+// Combine all subnets into a single object
+var subnets = union(requiredSubnets, AzureBastionSubnet, additionalSubnets)
 
 /*
  * Calculate the subnet addresses
- * // TODO: Extract into a separate module?
  */
-
-// Split the network address into usable elements
-var networkAddressSplit = split(networkAddressSpace, '/')
-var networkAddress = networkAddressSplit[0]
-var networkAddressOctets = split(networkAddress, '.')
-
-// Create a structure for the subnets' address spaces with placeholders for octet3 and/or octet4 // HACK: Will be removed with availability of Bicep cidr() function
-var subnetAddressBase = '${networkAddressOctets[0]}.${networkAddressOctets[1]}.${subnetCidr <= 26 ? '{octet3}' : networkAddressOctets[3]}.${subnetCidr > 26 ? '{octet4}' : '0'}/${subnetCidr}'
 
 var actualSubnets = [for (subnet, i) in items(subnets): {
   // Add a new property addressPrefix to each subnet definition. If addressPrefix property was already defined, it will be respected.
   '${subnet.key}': union({
-      addressPrefix: replace(replace(subnetAddressBase, '{octet4}', string(i)), '{octet3}', string(i))
+      addressPrefix: cidrSubnet(networkAddressSpace, subnetCidr, subnet.value.order)
     }, subnet.value)
 }]
 
