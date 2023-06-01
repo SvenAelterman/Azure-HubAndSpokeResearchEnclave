@@ -20,16 +20,49 @@
             "value": true
         },
         "autoDate": {
-            "value": "2023-05-30"
+            "value": "2023-06-01"
         },
         "networkAddressSpace": {
             "value": "10.40.0.0/16"
+        },
+        "customDnsIPs": {
+            "value": [
+                "10.40.6.4",
+                "10.40.6.5"
+            ]
         },
         "additionalSubnets": {
             "value": {
                 "aadds": {
                     "serviceEndpoints": [],
-                    "securityRules": [],
+                    "securityRules": [
+                        {
+                            "name": "AllowPSRemoting",
+                            "properties": {
+                                "protocol": "Tcp",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "5986",
+                                "sourceAddressPrefix": "AzureActiveDirectoryDomainServices",
+                                "destinationAddressPrefix": "*",
+                                "access": "Allow",
+                                "priority": 301,
+                                "direction": "Inbound"
+                            }
+                        },
+                        {
+                            "name": "AllowRD",
+                            "properties": {
+                                "protocol": "Tcp",
+                                "sourcePortRange": "*",
+                                "destinationPortRange": "3389",
+                                "sourceAddressPrefix": "CorpNetSaw",
+                                "destinationAddressPrefix": "*",
+                                "access": "Allow",
+                                "priority": 201,
+                                "direction": "Inbound"
+                            }
+                        }
+                    ],
                     "delegation": "",
                     "order": 6
                 }

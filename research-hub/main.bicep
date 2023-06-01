@@ -71,6 +71,9 @@ param subnetCidr int = 24
 @description('Any additional subnets for the hub virtual network.')
 param additionalSubnets object = {}
 
+@description('Custom IP addresses to be used for the virtual network.')
+param customDnsIPs array = []
+
 /*
  * Optional control parameters
  */
@@ -201,6 +204,8 @@ module networkModule '../shared-modules/networking/network.bicep' = {
     namingStructure: replace(resourceNamingStructure, '-{subWorkloadName}', '')
     subnetDefs: actualSubnetObject
     vnetAddressPrefix: networkAddressSpace
+
+    customDnsIPs: customDnsIPs
 
     tags: actualTags
   }

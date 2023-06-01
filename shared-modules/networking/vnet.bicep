@@ -7,6 +7,9 @@ param vnetAddressPrefix string
 param networkSecurityGroups object = {}
 @description('The route tables object must have a property with the name of the subnet. The value of the property is an object containing an id property. {subnet-name: { id: rt-id }}')
 param routeTables object = {}
+
+param customDnsIPs array = []
+
 param tags object = {}
 
 // This will sort the subnets alphabetically by name
@@ -21,6 +24,7 @@ resource vnet 'Microsoft.Network/virtualNetworks@2022-05-01' = {
         vnetAddressPrefix
       ]
     }
+
     // Loop through each subnet in the array
     subnets: [for (subnet, i) in subnetDefsArray: {
       // The name of the subnet (property name) became the key property
@@ -47,6 +51,10 @@ resource vnet 'Microsoft.Network/virtualNetworks@2022-05-01' = {
         ] : null
       }
     }]
+
+    dhcpOptions: {
+      dnsServers: customDnsIPs
+    }
   }
   tags: tags
 }
