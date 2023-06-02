@@ -222,7 +222,7 @@ module azureFirewallModule 'hub-modules/azureFirewall.bicep' = {
     firewallManagementSubnetId: networkModule.outputs.createdSubnets.AzureFirewallManagementSubnet.id
     firewallSubnetId: networkModule.outputs.createdSubnets.AzureFirewallSubnet.id
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'firewall')
-    tags: tags
+    tags: actualTags
     location: location
   }
 }
@@ -238,6 +238,7 @@ module bastionModule 'hub-modules/networking/bastion.bicep' = if (deployBastion)
     location: location
     bastionSubnetId: networkModule.outputs.createdSubnets.AzureBastionSubnet.id
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'bas')
+    tags: actualTags
   }
 }
 
@@ -267,12 +268,14 @@ module avdRouteTableModule '../shared-modules/networking/rt.bicep' = {
       // TODO: Add routes to bypass FW for updates, Monitor, and conditionally AVD
     ]
     rtName: networkModule.outputs.createdSubnets.avd.routeTableName
+    tags: actualTags
   }
 }
 
 resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   name: take(replace(rgNamingStructure, '{subWorkloadName}', 'avd'), 64)
   location: location
+  tags: actualTags
 }
 
 // TODO: Customize AVD module to support full desktop for researchers, based on param value
@@ -286,7 +289,7 @@ resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
 //     deploymentNameStructure: deploymentNameStructure
 //     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
 //     location: location
-//     tags: tags
+//     tags: actualTags
 //   }
 
 //   dependsOn: [
