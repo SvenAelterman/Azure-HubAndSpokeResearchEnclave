@@ -243,6 +243,18 @@ module bastionModule 'hub-modules/networking/bastion.bicep' = if (deployBastion)
   }
 }
 
+/*
+ * Deploy all private DNS zones
+ */
+module allPrivateDnsZonesModule 'hub-modules/dns/allPrivateDnsZones.bicep' = {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'dns-zones'), 64)
+  scope: networkRg
+  params: {
+    tags: actualTags
+    deploymentNameStructure: deploymentNameStructure
+  }
+}
+
 // TODO: Deploy firewall rules to allow Bastion to access spoke via RDP/SSH? --> That's a spoke deployment consideration.
 
 /*
