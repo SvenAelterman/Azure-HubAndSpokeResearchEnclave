@@ -26,6 +26,7 @@ param sequence int = 1
 param environment string = 'dev'
 
 @description('The naming convention for Azure resources. Supported placeholders: {workloadName}, {subWorkloadName}, {environment}, {rtype}, {location}, {sequence}. Recommended separator is hyphen (\'-\'). If using a different separator, specify the namingConventionSeparator parameter.')
+@minLength(1)
 param namingConvention string = '{workloadName}-{subWorkloadName}-{environment}-{rtype}-{location}-{sequence}'
 
 @description('The Azure built-in regulatory compliance framework to target. This will affect whether or not customer-managed keys, private endpoints, etc. are used.')
@@ -104,10 +105,10 @@ var actualTags = union(tags, dateCreatedTag, dateModifiedTag)
 
 // Use private endpoints when targeting NIST 800-53 R5 or CMMC 2.0 Level 2
 #disable-next-line no-unused-vars // LATER: Future use
-var usePrivateEndpoints = (complianceTarget == 'NIST80053R5' || complianceTarget == 'CMMC2L2') ? true : false
+var usePrivateEndpoints = complianceTarget == 'NIST80053R5' || complianceTarget == 'CMMC2L2'
 // Use customer-managed keys when targeting NIST 800-53 R5
 #disable-next-line no-unused-vars // LATER: Future use
-var useCMK = (complianceTarget == 'NIST80053R5') ? true : false
+var useCMK = complianceTarget == 'NIST80053R5'
 
 #disable-next-line no-unused-vars // LATER: Future use
 var avdTrafficThroughFirewall = useSessionHostAsResearchVm
@@ -161,7 +162,7 @@ var AzureBastionSubnet = deployBastion ? {
   AzureBastionSubnet: {
     serviceEndpoints: []
     //routes: [] Bastion doesn't support routes
-    securityRules: loadJsonContent('./hub-modules/networking/securityRules/bastion.json')
+    securityRules: loadJsonContent('./hub-modules/networking/securityRules/bastion.jsonc')
     delegation: ''
     order: 2
   }
@@ -190,7 +191,7 @@ var actualSubnetObject = reduce(actualSubnets, {}, (cur, next) => union(cur, nex
  */
 
 resource networkRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
-  name: replace(rgNamingStructure, '{subWorkloadName}', 'networking')
+  name: take(replace(rgNamingStructure, '{subWorkloadName}', 'networking'), 64)
   location: location
   tags: actualTags
 }

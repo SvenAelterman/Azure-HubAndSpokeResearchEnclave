@@ -1,3 +1,6 @@
+/*
+ * Defines the required security rules for Bastion to operate.
+ */
 [
 	{
 		"name": "Allow_Inbound_HTTPS",
