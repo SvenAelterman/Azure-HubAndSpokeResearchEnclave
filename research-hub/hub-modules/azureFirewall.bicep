@@ -121,9 +121,7 @@ resource firewall 'Microsoft.Network/azureFirewalls@2022-01-01' = {
   tags: tags
 
   // This dependency is added manually because otherwise the FW will try to deploy before the rule collections are ready
-  dependsOn: [
-    ruleCollectionGroups
-  ]
+  dependsOn: [ ruleCollectionGroups ]
 }
 
 output fwPrIp string = firewall.properties.ipConfigurations[0].properties.privateIPAddress

@@ -11,9 +11,11 @@ param tags = {
   lifetime: 'short'
 }
 
+param deployVpn = true
+param researchVmsAreSessionHosts = true
+
 param addAutoDateCreatedTag = false
 param addDateModifiedTag = true
-param autoDate = '2023-06-01'
 
 param networkAddressSpace = '10.40.0.0/16'
 param customDnsIPs = [
@@ -54,5 +56,6 @@ param additionalSubnets = {
     ]
     delegation: ''
     order: 6
+    subnetCidr: 24
   }
 }
