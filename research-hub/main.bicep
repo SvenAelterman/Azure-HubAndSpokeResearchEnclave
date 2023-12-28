@@ -246,6 +246,8 @@ module bastionModule 'hub-modules/networking/bastion.bicep' = if (deployBastion)
 /*
  * Deploy all private DNS zones
  */
+
+// LATER: Ignore this if peering to a hub virtual network, which should already have these
 module allPrivateDnsZonesModule 'hub-modules/dns/allPrivateDnsZones.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'dns-zones'), 64)
   scope: networkRg
@@ -255,13 +257,11 @@ module allPrivateDnsZonesModule 'hub-modules/dns/allPrivateDnsZones.bicep' = {
   }
 }
 
-// TODO: Deploy firewall rules to allow Bastion to access spoke via RDP/SSH? --> That's a spoke deployment consideration.
-
 /*
  * Deploy Azure Virtual Desktop
  */
 
-// TODO: Move this to the AVD module?
+// TODO: Move this to the AVD module because AVD in the hub might be optional
 // Modify the AVD route table to route traffic through the Azure Firewall
 module avdRouteTableModule '../shared-modules/networking/rt.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw'), 64)
