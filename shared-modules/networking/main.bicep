@@ -19,14 +19,18 @@ param location string
   } */
 @description('A custom object defining the subnet properties of each subnet. { subnet-name: { addressPrefix: string, serviceEndpoints: [], securityRules: [], routes: [], delegation: string } }')
 param subnetDefs object
+@description('The definition of additional subnets that have been manually created. Uses the ARM schema for subnets.')
+param additionalSubnets array = []
+
 @description('String representing the naming convention where \'{rtype}\' is a placeholder for vnet, rt, nsg, etc.')
 param namingStructure string
 
 @description('Provide a name for the deployment. Optionally, leave an \'{rtype}\' placeholder, which will be replaced with the common resource abbreviation for Virtual Network.')
 param deploymentNameStructure string
 
-@description('A IPv4 or IPv6 address space in CIDR notation.')
-param vnetAddressPrefix string
+@description('One or more IPv4 or IPv6 addresses spaces in CIDR notation.')
+@minLength(1)
+param vnetAddressPrefixes array
 
 @description('The Azure resource tags to apply to network security group, route table, and virtual network resources.')
 param tags object = {}
@@ -56,7 +60,7 @@ module networkSecurityModule 'networkSecurity.bicep' = {
   }
 }
 
-var nsgIds = reduce(networkSecurityModule.outputs.networkSecurityGroups, {}, (cur, next) => union(cur, next))
+var nsgs = reduce(networkSecurityModule.outputs.networkSecurityGroups, {}, (cur, next) => union(cur, next))
 
 // Create a route table for each subnet that requires one
 module networkRoutingModule 'networkRouting.bicep' = {
@@ -70,7 +74,7 @@ module networkRoutingModule 'networkRouting.bicep' = {
   }
 }
 
-var routeTableIds = reduce(networkRoutingModule.outputs.routeTables, {}, (cur, next) => union(cur, next))
+var routeTables = reduce(networkRoutingModule.outputs.routeTables, {}, (cur, next) => union(cur, next))
 
 // This is the parent module to deploy a VNet with subnets and output the subnets with their IDs as a custom object
 module vNetModule 'vnet.bicep' = {
@@ -79,10 +83,11 @@ module vNetModule 'vnet.bicep' = {
     location: location
     subnetDefs: subnetDefs
     vnetName: virtualNetworkName
-    vnetAddressPrefix: vnetAddressPrefix
-    networkSecurityGroups: nsgIds
-    routeTables: routeTableIds
+    vnetAddressPrefixes: vnetAddressPrefixes
+    networkSecurityGroups: nsgs
+    routeTables: routeTables
     customDnsIPs: customDnsIPs
+    additionalSubnets: additionalSubnets
     tags: tags
   }
 }

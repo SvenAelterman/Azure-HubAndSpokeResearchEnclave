@@ -191,12 +191,13 @@ var actualSubnetObject = reduce(actualSubnets, {}, (cur, next) => union(cur, nex
  */
 
 resource networkRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
+  #disable-next-line BCP334
   name: take(replace(rgNamingStructure, '{subWorkloadName}', 'networking'), 64)
   location: location
   tags: actualTags
 }
 
-module networkModule '../shared-modules/networking/network.bicep' = {
+module networkModule '../shared-modules/networking/main.bicep' = {
   name: replace(deploymentNameStructure, '{rtype}', 'network')
   scope: networkRg
   params: {
@@ -204,7 +205,7 @@ module networkModule '../shared-modules/networking/network.bicep' = {
     deploymentNameStructure: deploymentNameStructure
     namingStructure: replace(resourceNamingStructure, '-{subWorkloadName}', '')
     subnetDefs: actualSubnetObject
-    vnetAddressPrefix: networkAddressSpace
+    vnetAddressPrefixes: [ networkAddressSpace ]
 
     customDnsIPs: customDnsIPs
 
@@ -286,6 +287,7 @@ module avdRouteTableModule '../shared-modules/networking/rt.bicep' = {
 }
 
 resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
+  #disable-next-line BCP334
   name: take(replace(rgNamingStructure, '{subWorkloadName}', 'avd'), 64)
   location: location
   tags: actualTags
