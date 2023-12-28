@@ -11,7 +11,7 @@ param tags = {
   lifetime: 'short'
 }
 
-param deployVpn = true
+param deployVpn = false
 param researchVmsAreSessionHosts = true
 
 param addAutoDateCreatedTag = false
