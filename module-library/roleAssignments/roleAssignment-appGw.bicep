@@ -6,7 +6,7 @@ resource appGw 'Microsoft.Network/applicationGateways@2022-05-01' existing = {
   name: appGwName
 }
 
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-10-01-preview' = {
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(appGw.id, principalId, roleDefinitionId)
   scope: appGw
   properties: {

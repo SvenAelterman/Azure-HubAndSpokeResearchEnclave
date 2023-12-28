@@ -6,7 +6,7 @@ resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-previ
   name: uamiName
 }
 
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-10-01-preview' = {
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(uami.id, principalId, roleDefinitionId)
   scope: uami
   properties: {

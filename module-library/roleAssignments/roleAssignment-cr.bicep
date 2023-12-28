@@ -7,7 +7,7 @@ resource cr 'Microsoft.ContainerRegistry/registries@2022-02-01-preview' existing
   name: crName
 }
 
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2020-10-01-preview' = {
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(cr.id, principalId, roleDefinitionId)
   scope: cr
   properties: {
