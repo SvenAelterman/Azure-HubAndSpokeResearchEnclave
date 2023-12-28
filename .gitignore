@@ -1,1 +1,8 @@
+# User PowerShell deployment scripts
 *.user.ps1
+
+# Parameter files, except for samples
+*parameters.json
+*.bicepparam
+
+!main.sample*.bicepparam
