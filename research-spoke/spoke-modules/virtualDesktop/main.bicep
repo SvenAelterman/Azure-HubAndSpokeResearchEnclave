@@ -17,8 +17,16 @@ param privateLinkDnsZoneId string
 param deploymentNameStructure string
 param deploymentTime string = utcNow()
 
+// TODO: Using logonType param, set up Virtual Machine User Login role for objectId
+@allowed([ 'ad', 'entraID' ])
+param logonType string
+
+param vmulRoleDefinitionId string
+
 // Provide common default RDP properties for research workloads
-var customRdpProperty = 'drivestoredirect:s:0;audiomode:i:0;videoplaybackmode:i:1;redirectclipboard:i:0;redirectprinters:i:0;devicestoredirect:s:0;redirectcomports:i:0;redirectsmartcards:i:1;usbdevicestoredirect:s:0;enablecredsspsupport:i:1;use multimon:i:1;'
+var defaultRdpProperties = 'drivestoredirect:s:0;audiomode:i:0;videoplaybackmode:i:1;redirectclipboard:i:0;redirectprinters:i:0;devicestoredirect:s:0;redirectcomports:i:0;redirectsmartcards:i:1;usbdevicestoredirect:s:0;enablecredsspsupport:i:1;use multimon:i:1;'
+var entraIDJoinCustomRdpProperties = (logonType == 'entraID') ? 'targetisaadjoined:i:1;enablerdsaadauth:i:1;redirectwebauthn:i:1;' : ''
+var customRdpProperty = '${defaultRdpProperties}${entraIDJoinCustomRdpProperties}'
 
 resource hostPool 'Microsoft.DesktopVirtualization/hostPools@2020-11-10-preview' = {
   name: replace(namingStructure, '{rtype}', 'hp')
@@ -50,9 +58,18 @@ resource desktopApplicationGroup 'Microsoft.DesktopVirtualization/applicationGro
   tags: tags
 }
 
+// Create a role assignment for the user or group to be assigned to the Virtual Machine User Login (vmul) role, if using Entra ID join
+resource rgRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (logonType == 'entraID') {
+  name: guid(resourceGroup().id, objectId, vmulRoleDefinitionId)
+  properties: {
+    roleDefinitionId: vmulRoleDefinitionId
+    principalId: objectId
+  }
+}
+
 // LATER: Execute deployment script for Update-AzWvdDesktop -ResourceGroupName rg-wcmprj-avd-demo-eastus-02 -ApplicationGroupName ag-wcmprj-avd-demo-eastus-02 -Name SessionDesktop -FriendlyName Test
 
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+resource dagRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(desktopApplicationGroup.id, objectId, dvuRoleDefinitionId)
   scope: desktopApplicationGroup
   properties: {
