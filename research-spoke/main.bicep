@@ -56,37 +56,38 @@ param workspaceFriendlyName string
 // @description('The list of remote application groups and applications in each group to create. See sample parameters file for the syntax.')
 // param remoteAppApplicationGroupInfo array
 
+// TODO: Add support for custom images
 // @description('The Azure resource ID of the standalone image to use for new session hosts. If blank, will use the Windows 11 23H2 O365 Gen 2 Marketplace image.')
 // param sessionHostVmImageResourceId string = ''
-// @secure()
-// param sessionHostLocalAdminUsername string
-// @secure()
-// param sessionHostLocalAdminPassword string
+
+@secure()
+param sessionHostLocalAdminUsername string
+@secure()
+param sessionHostLocalAdminPassword string
 @description('Specifies if logons to virtual machines should use AD or Entra ID.')
 @allowed([
   'ad'
   'entraID'
 ])
-#disable-next-line no-unused-params // LATER: Future use
 param logonType string
-// @secure()
-// @description('The username of a domain user or service account to use to join the Active Directory domain. Required if using AD join.')
-// param domainJoinUsername string = ''
-// @secure()
-// @description('The password of the domain user or service account to use to join the Active Directory domain. Required if using AD join.')
-// param domainJoinPassword string = ''
+@secure()
+@description('The username of a domain user or service account to use to join the Active Directory domain. Required if using AD join.')
+param domainJoinUsername string = ''
+@secure()
+@description('The password of the domain user or service account to use to join the Active Directory domain. Required if using AD join.')
+param domainJoinPassword string = ''
 
-// @description('The fully qualified DNS name of the Active Directory domain to join. Required if using AD join.')
-// param adDomainFqdn string = ''
-// @description('Optional. The OU path in LDAP notation to use when joining the session hosts.')
-// param adOuPath string = ''
-// @description('Optional. The number of Azure Virtual Desktop session hosts to create in the pool. Defaults to 1.')
-// param sessionHostCount int = 1
-// @description('The prefix used for the computer names of the session host(s). Maximum 11 characters.')
-// @maxLength(11)
-// param sessionHostNamePrefix string
-// @description('A valid Azure Virtual Machine size. Use `az vm list-sizes --location "<region>"` to retrieve a list for the selected location')
-// param sessionHostSize string
+@description('The fully qualified DNS name of the Active Directory domain to join. Required if using AD join.')
+param adDomainFqdn string = ''
+@description('Optional. The OU path in LDAP notation to use when joining the session hosts.')
+param adOuPath string = ''
+@description('Optional. The number of Azure Virtual Desktop session hosts to create in the pool. Defaults to 1.')
+param sessionHostCount int = 1
+@description('The prefix used for the computer names of the session host(s). Maximum 11 characters.')
+@maxLength(11)
+param sessionHostNamePrefix string
+@description('A valid Azure Virtual Machine size. Use `az vm list-sizes --location "<region>"` to retrieve a list for the selected location')
+param sessionHostSize string
 @description('If true, will configure the deployment of AVD to make the AVD session hosts usable as research VMs. This will give full desktop access, flow the AVD traffic through the firewall, etc.')
 param useSessionHostAsResearchVm bool = true
 
@@ -408,13 +409,14 @@ module avdModule './spoke-modules/virtualDesktop/main.bicep' = if (useSessionHos
     location: location
     tags: actualTags
     namingStructure: replace(namingStructure, '{subWorkloadName}', 'avd')
-    desktopAppGroupFriendlyName: desktopAppGroupFriendlyName
-    workspaceFriendlyName: workspaceFriendlyName
-    objectId: researcherAadObjectId
     deploymentNameStructure: deploymentNameStructure
 
+    desktopAppGroupFriendlyName: desktopAppGroupFriendlyName
+    workspaceFriendlyName: workspaceFriendlyName
     //remoteAppApplicationGroupInfo: remoteAppApplicationGroupInfo
+
     dvuRoleDefinitionId: rolesModule.outputs.roles.DesktopVirtualizationUser
+    objectId: researcherAadObjectId
 
     privateEndpointSubnetId: networkModule.outputs.createdSubnets.privateEndpointSubnet.id
     privateLinkDnsZoneId: avdConnectionPrivateDnsZone.id
@@ -422,37 +424,37 @@ module avdModule './spoke-modules/virtualDesktop/main.bicep' = if (useSessionHos
   }
 }
 
-// var useADDomainInformation = logonType == 'ad'
+var useADDomainInformation = (logonType == 'ad')
 
-// module sessionHostModule './spoke-modules/virtualDesktop/sessionHosts.bicep' = if (useSessionHostAsResearchVm) {
-//   name: take(replace(deploymentNameStructure, '{rtype}', 'avd-sh'), 64)
-//   scope: avdRg
-//   params: {
-//     namingStructure: namingStructureNoSub
-//     subnetId: networkModule.outputs.createdSubnets.computeSubnet.id
-//     tags: actualTags
-//     location: location
-//     diskEncryptionSetId: diskEncryptionSetModule.outputs.id
+module sessionHostModule './spoke-modules/virtualDesktop/sessionHosts.bicep' = if (useSessionHostAsResearchVm) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'avd-sh'), 64)
+  scope: avdRg
+  params: {
+    namingStructure: namingStructureNoSub
+    subnetId: networkModule.outputs.createdSubnets.computeSubnet.id
+    tags: actualTags
+    location: location
+    diskEncryptionSetId: diskEncryptionSetModule.outputs.id
 
-//     hostPoolName: avdModule.outputs.hostPoolName
-//     hostPoolToken: avdModule.outputs.hostPoolRegistrationToken
+    hostPoolName: avdModule.outputs.hostPoolName
+    hostPoolToken: avdModule.outputs.hostPoolRegistrationToken
 
-//     vmLocalAdminPassword: sessionHostLocalAdminPassword
-//     vmLocalAdminUsername: sessionHostLocalAdminUsername
-//     vmImageResourceId: sessionHostVmImageResourceId
-//     vmCount: sessionHostCount
-//     vmNamePrefix: sessionHostNamePrefix
-//     vmSize: sessionHostSize
+    vmLocalAdminPassword: sessionHostLocalAdminPassword
+    vmLocalAdminUsername: sessionHostLocalAdminUsername
+    //vmImageResourceId: sessionHostVmImageResourceId
+    vmCount: sessionHostCount
+    vmNamePrefix: sessionHostNamePrefix
+    vmSize: sessionHostSize
 
-//     logonType: logonType
-//     ADDomainInfo: useADDomainInformation ? {
-//       domainJoinPassword: domainJoinPassword
-//       domainJoinUsername: domainJoinUsername
-//       adDomainFqdn: adDomainFqdn
-//       adOuPath: adOuPath
-//     } : null
-//   }
-// }
+    logonType: logonType
+    ADDomainInfo: useADDomainInformation ? {
+      domainJoinPassword: domainJoinPassword
+      domainJoinUsername: domainJoinUsername
+      adDomainFqdn: adDomainFqdn
+      adOuPath: adOuPath
+    } : null
+  }
+}
 
 module publicStorageAccountNameModule '../module-library/createValidAzResourceName.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'pubsaname'), 64)

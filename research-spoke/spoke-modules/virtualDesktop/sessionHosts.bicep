@@ -13,13 +13,10 @@ param subnetId string
 param vmLocalAdminUsername string
 @secure()
 param vmLocalAdminPassword string
-@secure()
-param domainJoinUsername string
-@secure()
-param domainJoinPassword string
 
-param adDomainFqdn string
-param adOuPath string
+@description('Schema: { domainJoinPassword: string, domainJoinUserName: string, adDomainFqdn: string, adOuPath: string }')
+@secure()
+param ADDomainInfo object = {}
 
 param hostPoolName string
 @secure()
@@ -27,16 +24,23 @@ param hostPoolToken string
 
 param vmImageResourceId string = ''
 
+@allowed([ 'ad', 'entraID' ])
+param logonType string
+
 // Nested templates location (not used here, just for reference)
-// https://wvdportalstorageblob.blob.core.usgovcloudapi.net/galleryartifacts/armtemplates/Hostpool_02-27-2023/nestedTemplates/
+// Commercial: https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/armtemplates/Hostpool_1.0.02544.255/nestedTemplates/
+// Azure Gov:  https://wvdportalstorageblob.blob.core.usgovcloudapi.net/galleryartifacts/armtemplates/Hostpool_02-27-2023/nestedTemplates/
 
 // Assumed to be the same between both cloud environments
-// Latest as of 2023-05-10
-var configurationFileName = 'Configuration_01-19-2023.zip'
-
+// Latest as of 2023-12-29
+var configurationFileName = 'Configuration_1.0.02544.255.zip'
 var artifactsLocation = 'https://wvdportalstorageblob.blob.${az.environment().suffixes.storage}/galleryartifacts/${configurationFileName}'
 
-// Create a new availability set for these virtual machines
+var intuneMdmId = '0000000a-0000-0000-c000-000000000000'
+
+// TODO: Add session hosts to backup
+
+// Create a new availability set for the session hosts
 resource availabilitySet 'Microsoft.Compute/availabilitySets@2023-03-01' = {
   name: replace(namingStructure, '{rtype}', 'avail')
   location: location
@@ -50,8 +54,9 @@ resource availabilitySet 'Microsoft.Compute/availabilitySets@2023-03-01' = {
   }
 }
 
+// Create the NICs for each session host
 resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [for i in range(0, vmCount): {
-  name: '${vmNamePrefix}${i}-nic'
+  name: replace(namingStructure, '{rtype}', '${vmNamePrefix}${i}-nic') // '${vmNamePrefix}${i}-nic'
   location: location
   tags: tags
   properties: {
@@ -66,32 +71,29 @@ resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [for i in range
         }
       }
     ]
-    // HACK: Change from original
+    // LATER: Some VM sizes don't support this => build a support matrix and use it
     enableAcceleratedNetworking: true
   }
 }]
 
+// Create the session hosts
 resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in range(0, vmCount): {
-  name: '${vmNamePrefix}${i}'
+  name: replace(namingStructure, '{rtype}', '${vmNamePrefix}${i}') // '${vmNamePrefix}${i}'
   location: location
   tags: tags
   properties: {
+    // TODO: Consider adding licenseType: 'Windows_Client' (when using default image)
+    // LATER: Support for hibernation: additionalCapabilities: { hibernationEnabled: }
     hardwareProfile: {
       vmSize: vmSize
     }
     osProfile: {
-      computerName: '${vmNamePrefix}${i}'
+      computerName: '${vmNamePrefix}${i}' // Same as the VM's resource name
       adminUsername: vmLocalAdminUsername
       adminPassword: vmLocalAdminPassword
       windowsConfiguration: {
+        // LATER: If leveraging Azure Update Manager, configure for compatibility
         enableAutomaticUpdates: true
-        // patchSettings: {
-        //   assessmentMode: 'AutomaticByPlatform'
-        //   automaticByPlatformSettings: {
-        //     rebootSetting: 'Always'
-        //   }
-        //}
-        // HACK: Ommitting timezone; should be set with AVD group policy setting
       }
     }
     securityProfile: {
@@ -108,7 +110,6 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in
         caching: 'ReadWrite'
         osType: 'Windows'
         managedDisk: {
-          // HACK: Changed from PremiumSSD_LRS
           storageAccountType: 'StandardSSD_LRS'
           diskEncryptionSet: {
             id: diskEncryptionSetId
@@ -122,7 +123,7 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in
         publisher: 'microsoftwindowsdesktop'
         offer: 'office-365'
         version: 'latest'
-        sku: 'win10-22h2-avd-m365-g2'
+        sku: 'win11-23h2-avd-m365'
       }
     }
     networkProfile: {
@@ -134,7 +135,6 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in
     }
     diagnosticsProfile: {
       bootDiagnostics: {
-        // HACK: change from original (bootDiag off)
         enabled: false
       }
     }
@@ -145,7 +145,7 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in
 }]
 
 // Deploy the AVD agents to each session host
-resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, vmCount): {
+resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [for i in range(0, vmCount): {
   name: 'AvdAgentDSC'
   parent: sessionHosts[i]
   location: location
@@ -160,14 +160,44 @@ resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2018
       configurationFunction: 'Configuration.ps1\\AddSessionHost'
       properties: {
         hostPoolName: hostPoolName
-        registrationInfoToken: hostPoolToken
-        aadJoin: false
+        registrationInfoTokenCredential: {
+          UserName: 'PLACEHOLDER_DO_NOT_USE'
+          Password: 'PrivateSettingsRef:RegistrationInfoToken'
+        }
+        aadJoin: (logonType == 'entraID')
+        mdmId: (logonType == 'entraID') ? intuneMdmId : ''
+      }
+    }
+    protectedSettings: {
+      Items: {
+        RegistrationInfoToken: hostPoolToken
       }
     }
   }
+  // Wait for domain join to complete before registering as a session host
+  dependsOn: [ domainJoinExtension[i], entraIDJoinExtension[i], windowsGuestAttestationExtension[i], windowsVMGuestConfigExtension[i] ]
 }]
 
-resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2018-10-01' = [for i in range(0, vmCount): {
+// Entra ID join, if specified
+resource entraIDJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [for i in range(0, vmCount): if (logonType == 'entraID') {
+  name: 'EntraIDJoin'
+  parent: sessionHosts[i]
+  location: location
+  tags: tags
+  properties: {
+    publisher: 'Microsoft.Azure.ActiveDirectory'
+    type: 'AADLoginForWindows'
+    typeHandlerVersion: '2.0'
+    autoUpgradeMinorVersion: true
+    settings: {
+      mdmId: intuneMdmId
+    }
+  }
+  dependsOn: [ windowsGuestAttestationExtension[i], windowsVMGuestConfigExtension[i] ]
+}]
+
+// Domain join the session hosts to Active Directory, if specified
+resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [for i in range(0, vmCount): if (logonType == 'ad' && !empty(ADDomainInfo)) {
   name: 'DomainJoin'
   parent: sessionHosts[i]
   location: location
@@ -178,24 +208,53 @@ resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2018-
     typeHandlerVersion: '1.3'
     autoUpgradeMinorVersion: true
     settings: {
-      name: adDomainFqdn
-      ouPath: adOuPath
-      user: domainJoinUsername
+      name: ADDomainInfo.adDomainFqdn
+      ouPath: ADDomainInfo.adOuPath
+      user: ADDomainInfo.domainJoinUsername
       restart: 'true'
       options: '3'
     }
     protectedSettings: {
-      password: domainJoinPassword
+      password: ADDomainInfo.domainJoinPassword
     }
   }
-  dependsOn: [
-    avdAgentDscExtension[i]
-  ]
+  dependsOn: [ windowsGuestAttestationExtension[i], windowsVMGuestConfigExtension[i] ]
 }]
 
-resource windowsVMGuestConfigExtension 'Microsoft.Compute/virtualMachines/extensions@2020-12-01' = [for i in range(0, vmCount): {
+// Deploy Windows Attestation, for boot integrity monitoring
+resource windowsGuestAttestationExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [for i in range(0, vmCount): {
+  name: 'WindowsGuestAttestation'
   parent: sessionHosts[i]
+  location: location
+  tags: tags
+  properties: {
+    publisher: 'Microsoft.Azure.Security.WindowsAttestation'
+    type: 'GuestAttestation'
+    typeHandlerVersion: '1.0'
+    autoUpgradeMinorVersion: true
+    enableAutomaticUpgrade: true
+    settings: {
+      AttestationConfig: {
+        MaaSettings: {
+          maaEndpoint: ''
+          maaTenantName: 'GuestAttestation'
+
+        }
+        AscSettings: {
+          ascReportingEndpoint: ''
+          ascReportingFrequency: ''
+        }
+        useCustomToken: false
+        disableAlerts: false
+      }
+    }
+  }
+}]
+
+// Deploy the Windows VM Guest Configuration extension which is required for most regulatory compliance initiatives
+resource windowsVMGuestConfigExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [for i in range(0, vmCount): {
   name: 'AzurePolicyforWindows'
+  parent: sessionHosts[i]
   location: location
   properties: {
     publisher: 'Microsoft.GuestConfiguration'
