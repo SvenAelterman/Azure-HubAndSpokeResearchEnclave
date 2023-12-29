@@ -20,6 +20,7 @@ param location string
 param resourceType string
 param environment string
 param workloadName string
+param subWorkloadName string = ''
 param sequence int
 
 @description('If true, the name will always use short versions of placeholders. If false, it will only be shortened when needed to fit in the maxLength.')
@@ -73,6 +74,7 @@ var Defs = {
 var shortLocations = {
   eastus: 'eus'
   eastus2: 'eus2'
+  usgovvirginia: 'gva'
 }
 
 var maxLength = Defs[resourceType].maxLength
@@ -90,16 +92,20 @@ var sequenceFormatted = format('{0:00}', sequence)
 // For idempotency, deployments of the same type, workload, environment, sequence, and resource group will yield the same resource name
 var randomChars = addRandomChars > 0 ? take(uniqueString(subscription().subscriptionId, workloadName, location, environment, string(sequence), resourceType, additionalRandomInitializer), addRandomChars) : ''
 
-// Remove hyphens from the naming convention if needed
-var namingConventionSegmentSeparatorProcessed = doRemoveSegmentSeparator ? replace(namingConvention, segmentSeparator, '') : namingConvention
+// Remove {subWorkloadName} if not needed
+var namingConventionSubProcessed = empty(subWorkloadName) ? replace(namingConvention, '-{subWorkloadName}', '') : namingConvention
+
+// Remove segment separators (usually dash/hyphens (-)) from the naming convention if needed
+var namingConventionSegmentSeparatorProcessed = doRemoveSegmentSeparator ? replace(namingConventionSubProcessed, segmentSeparator, '') : namingConventionSubProcessed
 
 var workloadNameSegmentSeparatorProcessed = doRemoveSegmentSeparator ? replace(workloadName, segmentSeparator, '') : workloadName
+var subWorkloadNameSegmentSeparatorProcessed = doRemoveSegmentSeparator ? replace(subWorkloadName, segmentSeparator, '') : subWorkloadName
 var randomizedWorkloadName = '${workloadNameSegmentSeparatorProcessed}${randomChars}'
 
 // Use the naming convention to create two names: one shortened, one regular
-var regularName = replace(replace(replace(replace(replace(namingConventionSegmentSeparatorProcessed, '{env}', toLower(environment)), '{loc}', location), '{seq}', sequenceFormatted), '{wloadname}', randomizedWorkloadName), '{rtype}', resourceType)
+var regularName = replace(replace(replace(replace(replace(replace(namingConventionSegmentSeparatorProcessed, '{env}', toLower(environment)), '{loc}', location), '{seq}', sequenceFormatted), '{workloadName}', randomizedWorkloadName), '{rtype}', resourceType), '{subWorkloadName}', subWorkloadNameSegmentSeparatorProcessed)
 // The short name uses one character for the environment, a shorter location name, and the minimum number of digits for the sequence
-var shortName = replace(replace(replace(replace(replace(namingConventionSegmentSeparatorProcessed, '{env}', toLower(take(environment, 1))), '{loc}', shortLocationValue), '{seq}', string(sequence)), '{wloadname}', randomizedWorkloadName), '{rtype}', resourceType)
+var shortName = replace(replace(replace(replace(replace(replace(namingConventionSegmentSeparatorProcessed, '{env}', toLower(take(environment, 1))), '{loc}', shortLocationValue), '{seq}', string(sequence)), '{workloadName}', randomizedWorkloadName), '{rtype}', resourceType), '{subWorkloadName}', subWorkloadNameSegmentSeparatorProcessed)
 
 // Based on the length of the workload name, the short name could still be too long
 var mustTryVowelRemoval = length(shortName) > maxLength
@@ -108,6 +114,7 @@ var minEffectiveVowelRemovalCount = length(shortName) - maxLength
 
 // If allowed, try removing vowels
 var workloadNameVowelsProcessed = mustTryVowelRemoval && useRemoveVowelStrategy ? replace(replace(replace(replace(replace(workloadNameSegmentSeparatorProcessed, 'a', ''), 'e', ''), 'i', ''), 'o', ''), 'u', '') : workloadNameSegmentSeparatorProcessed
+var subWorkloadNameVowelsProcessed = mustTryVowelRemoval && useRemoveVowelStrategy ? replace(replace(replace(replace(replace(subWorkloadNameSegmentSeparatorProcessed, 'a', ''), 'e', ''), 'i', ''), 'o', ''), 'u', '') : subWorkloadNameSegmentSeparatorProcessed
 
 var mustShortenWorkloadName = (length(randomizedWorkloadName) - length('${workloadNameVowelsProcessed}${randomChars}')) < minEffectiveVowelRemovalCount
 
@@ -118,7 +125,7 @@ var workloadNameCharsToKeep = mustShortenWorkloadName ? length(workloadNameVowel
 var shortWorkloadName = '${take(workloadNameVowelsProcessed, workloadNameCharsToKeep)}${randomChars}'
 
 // Recreate a proposed short name for the resource
-var actualShortName = replace(replace(replace(replace(replace(namingConventionSegmentSeparatorProcessed, '{env}', toLower(take(environment, 1))), '{loc}', shortLocationValue), '{seq}', string(sequence)), '{wloadname}', shortWorkloadName), '{rtype}', resourceType)
+var actualShortName = replace(replace(replace(replace(replace(replace(namingConventionSegmentSeparatorProcessed, '{env}', toLower(take(environment, 1))), '{loc}', shortLocationValue), '{seq}', string(sequence)), '{workloadName}', shortWorkloadName), '{rtype}', resourceType), '{subWorkloadName}', subWorkloadNameVowelsProcessed)
 
 // The actual name of the resource depends on whether shortening is required or the length of the regular name exceeds the maximum length allowed for the resource type
 var actualName = (requireShorten || length(regularName) > maxLength) ? actualShortName : regularName
@@ -127,11 +134,3 @@ var actualNameCased = lowerCase ? toLower(actualName) : actualName
 
 // This take() function shouldn't actually remove any characters, just here for safety
 output shortName string = take(actualNameCased, maxLength)
-
-// For debugging only
-output workloadNameCharsKept int = workloadNameCharsToKeep
-output originalShortNameLength int = length(shortName)
-output actualNameCased string = actualNameCased
-output workloadNameVowelsProcessed string = workloadNameVowelsProcessed
-output triedVowelRemoval bool = mustTryVowelRemoval
-output minEffectiveVowelRemovalCount int = minEffectiveVowelRemovalCount

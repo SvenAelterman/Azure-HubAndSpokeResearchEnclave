@@ -1,0 +1,83 @@
+[
+    {
+        "name": "Move data",
+        "type": "Copy",
+        "dependsOn": [],
+        "policy": {
+            "timeout": "0.12:00:00",
+            "retry": 0,
+            "retryIntervalInSeconds": 30,
+            "secureOutput": false,
+            "secureInput": false
+        },
+        "userProperties": [],
+        "typeProperties": {
+            "source": {
+                "type": "BinarySource",
+                "storeSettings": {
+                    "type": "AzureFileStorageReadSettings",
+                    "recursive": true,
+                    "deleteFilesAfterCompletion": true
+                },
+                "formatSettings": {
+                    "type": "BinaryReadSettings"
+                }
+            },
+            "sink": {
+                "type": "BinarySink",
+                "storeSettings": {
+                    "type": "AzureBlobFSWriteSettings"
+                }
+            },
+            "enableStaging": false
+        },
+        "inputs": [
+            {
+                "referenceName": "AzFilesDataset",
+                "type": "DatasetReference",
+                "parameters": {
+                    "fileName": {
+                        "value": "@pipeline().parameters.fileName",
+                        "type": "Expression"
+                    },
+                    "storageAccountName": {
+                        "value": "@pipeline().parameters.sourceStorageAccountName",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "@pipeline().parameters.sourceFolderPath",
+                        "type": "Expression"
+                    },
+                    "fileShareName": {
+                        "value": "@pipeline().parameters.sourceFileShareName",
+                        "type": "Expression"
+                    },
+                    "connStringKvBaseUrl": {
+                        "value": "@pipeline().parameters.sourceConnStringKvBaseUrl",
+                        "type": "Expression"
+                    }
+                }
+            }
+        ],
+        "outputs": [
+            {
+                "referenceName": "DfsDataset",
+                "type": "DatasetReference",
+                "parameters": {
+                    "storageAccountName": {
+                        "value": "@pipeline().parameters.sinkStorageAccountName",
+                        "type": "Expression"
+                    },
+                    "folderPath": {
+                        "value": "@pipeline().parameters.sinkFolderPath",
+                        "type": "Expression"
+                    },
+                    "fileName": {
+                        "value": "@pipeline().parameters.fileName",
+                        "type": "Expression"
+                    }
+                }
+            }
+        ]
+    }
+]

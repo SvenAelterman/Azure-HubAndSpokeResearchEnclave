@@ -36,7 +36,6 @@ param namingConvention string = '{workloadName}-{subWorkloadName}-{environment}-
   'CMMC2L2'
   'NIST800171R2'
 ])
-#disable-next-line no-unused-params // LATER: Future use
 // Default to the strictest supported compliance framework
 param complianceTarget string = 'NIST80053R5'
 

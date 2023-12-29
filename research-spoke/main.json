@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "location": {
+      "value": "eastus"
+    },
+    "workloadName": {
+      "value": "SURE"
+    },
+    "environment": {
+      "value": "dev"
+    },
+    "sequence": {
+      "value": 1
+    },
+    "namingConvention": {
+      "value": "{workloadName}-{subWorkloadName}-{env}-{rtype}-{loc}-{seq}"
+    },
+    "networkAddressSpaces": {
+      "value": [
+        "10.27.0.0/24"
+      ]
+    },
+    "hubFirewallIp": {
+      "value": "10.40.4.4"
+    },
+    "hubVNetResourceId": {
+      "value": "/subscriptions/74372aa9-54b9-4695-8b11-aa5d2205c0ae/resourceGroups/ResearchHub-networking-dev-rg-eastus-01/providers/Microsoft.Network/virtualNetworks/ResearchHub-dev-vnet-eastus-01"
+    },
+    "hubPrivateDnsZonesResourceGroupId": {
+      "value": "/subscriptions/74372aa9-54b9-4695-8b11-aa5d2205c0ae/resourceGroups/ResearchHub-networking-dev-rg-eastus-01"
+    },
+    "researcherAadObjectId": {
+      "value": "12427254-2336-4e4c-acd5-c6c4af144660"
+    },
+    "desktopAppGroupFriendlyName": {
+      "value": "Research Spoke: SURE 1"
+    },
+    "workspaceFriendlyName": {
+      "value": "Research Spoke: SURE 1"
+    },
+    "logonType": {
+      "value": "entraID"
+    },
+    "useSessionHostAsResearchVm": {
+      "value": true
+    },
+    "debugMode": {
+      "value": true
+    },
+    "debugRemoteIp": {
+      "value": "69.130.149.21"
+    },
+    "debugPrincipalId": {
+      "value": "2f439cdc-dfa9-4130-a49d-c363fe380ad1"
+    },
+    "encryptionKeyExpirySeed": {
+      "value": "2023-12-28T21:45:00Z"
+    }
+  }
+}

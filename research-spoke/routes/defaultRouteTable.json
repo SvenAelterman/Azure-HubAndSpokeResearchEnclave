@@ -1,0 +1,10 @@
+[
+    {
+        "name": "default",
+        "properties": {
+            "addressPrefix": "0.0.0.0/0",
+            "nextHopIpAddress": "{{fwIp}}",
+            "nextHopType": "VirtualAppliance"
+        }
+    }
+]
