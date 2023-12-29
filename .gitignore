@@ -6,3 +6,6 @@
 *.bicepparam
 
 !main.sample*.bicepparam
+
+# Compiled Bicep
+main.json
