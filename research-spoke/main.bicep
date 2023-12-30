@@ -421,6 +421,9 @@ module avdModule './spoke-modules/virtualDesktop/main.bicep' = if (useSessionHos
     privateEndpointSubnetId: networkModule.outputs.createdSubnets.privateEndpointSubnet.id
     privateLinkDnsZoneId: avdConnectionPrivateDnsZone.id
     usePrivateLinkForHostPool: usePrivateEndpoints
+
+    logonType: logonType
+    vmulRoleDefinitionId: (logonType == 'entraID') ? rolesModule.outputs.roles.VirtualMachineUserLogin : ''
   }
 }
 
@@ -453,6 +456,10 @@ module sessionHostModule './spoke-modules/virtualDesktop/sessionHosts.bicep' = i
       adDomainFqdn: adDomainFqdn
       adOuPath: adOuPath
     } : null
+
+    deploymentNameStructure: deploymentNameStructure
+    recoveryServicesVaultId: recoveryServicesVaultModule.outputs.id
+    backupPolicyName: recoveryServicesVaultModule.outputs.backupPolicyName
   }
 }
 

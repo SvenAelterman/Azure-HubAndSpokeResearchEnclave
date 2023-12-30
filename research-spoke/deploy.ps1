@@ -39,6 +39,7 @@ Import-Module ..\scripts\PowerShell\Modules\AzSubscriptionManagement.psm1
 Set-AzContextWrapper -SubscriptionId $SubscriptionId -Environment $Environment
 
 # Ensure the EncryptionAtHost feature is registered for the current subscription
+# LATER: Do this with a deployment script
 Register-AzProviderFeatureWrapper -ProviderNamespace "Microsoft.Compute" -FeatureName "EncryptionAtHost"
 
 # Remove the module from the session

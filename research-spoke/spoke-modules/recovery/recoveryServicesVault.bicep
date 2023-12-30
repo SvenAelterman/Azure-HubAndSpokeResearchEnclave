@@ -156,3 +156,6 @@ resource lock 'Microsoft.Authorization/locks@2020-05-01' = {
     level: 'CanNotDelete'
   }
 }
+
+output id string = recoveryServicesVault.id
+output backupPolicyName string = enhancedBackupPolicy.name

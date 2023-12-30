@@ -27,6 +27,10 @@ param vmImageResourceId string = ''
 @allowed([ 'ad', 'entraID' ])
 param logonType string
 
+param deploymentNameStructure string
+param backupPolicyName string
+param recoveryServicesVaultId string
+
 // Nested templates location (not used here, just for reference)
 // Commercial: https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/armtemplates/Hostpool_1.0.02544.255/nestedTemplates/
 // Azure Gov:  https://wvdportalstorageblob.blob.core.usgovcloudapi.net/galleryartifacts/armtemplates/Hostpool_02-27-2023/nestedTemplates/
@@ -268,6 +272,20 @@ resource windowsVMGuestConfigExtension 'Microsoft.Compute/virtualMachines/extens
 }]
 
 // LATER: Deploy NVIDIA or AMD drivers if needed, based on vmSize
+
+var rsvRgName = split(recoveryServicesVaultId, '/')[4]
+
+// Create a backup item for each session host
+// This must be deployed in a separate module because it's in a different resource group
+module backupItems '../recovery/rsvProtectedItem.bicep' = [for i in range(0, vmCount): if (!empty(backupPolicyName) && !empty(recoveryServicesVaultId)) {
+  name: replace(deploymentNameStructure, '{rtype}', '${vmNamePrefix}${i}-backup')
+  scope: resourceGroup(rsvRgName)
+  params: {
+    backupPolicyName: backupPolicyName
+    recoveryServicesVaultId: recoveryServicesVaultId
+    virtualMachineId: sessionHosts[i].id
+  }
+}]
 
 // for Debug only
 output artifactsLocation string = artifactsLocation
