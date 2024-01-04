@@ -76,6 +76,8 @@ param additionalSubnets object = {}
 @description('Custom IP addresses to be used for the virtual network.')
 param customDnsIPs array = []
 
+// TODO: If no custom DNS IPs are specified, create a private DNS zone for the virtual network for VM auto-registration
+
 /*
  * Optional control parameters
  */
@@ -309,17 +311,18 @@ module vpnGatewayModule 'hub-modules/networking/vpnGateway.bicep' = if (deployVp
  * Deploy all private DNS zones
  */
 
+var dnsZoneDeploymentNameStructure = '{rtype}-${deploymentTime}'
+
 // LATER: Ignore this if peering to a hub virtual network, which should already have these
 module allPrivateDnsZonesModule 'hub-modules/dns/allPrivateDnsZones.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'dns-zones'), 64)
   scope: networkRg
   params: {
     tags: actualTags
-    deploymentNameStructure: deploymentNameStructure
+    deploymentNameStructure: dnsZoneDeploymentNameStructure
+    vnetId: networkModule.outputs.vNetId
   }
 }
-
-// TODO: Link all private DNS zones to the hub virtual network
 
 /*
  * Deploy Azure Virtual Desktop
