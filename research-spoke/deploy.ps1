@@ -1,3 +1,16 @@
+<#
+.SYNOPSIS
+    Performs a deployment of the Azure resources in a research spoke subscription.
+
+.DESCRIPTION
+    Use this for manual deployments only.
+    If using a CI/CD pipeline, specify the necessary parameters in the pipeline definition.
+#>
+
+# LATER: Be more specific about the required modules; it will speed up the initial call
+#Requires -Modules "Az"
+#Requires -PSEdition Core
+
 [CmdletBinding()]
 Param(
     [Parameter(Position = 1)]
