@@ -19,7 +19,7 @@ param containerNames array
 
 param debugMode bool = false
 param debugRemoteIp string = ''
-param applyDeleteLock bool = true
+param applyDeleteLock bool = !debugMode
 
 param allowedIpAddresses array = []
 
@@ -42,10 +42,11 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     }
   }
   properties: {
-    publicNetworkAccess: !debugMode && empty(allowedIpAddresses) ? 'Disabled' : 'Enabled'
+    publicNetworkAccess: !debugMode && empty(actualAllowedIpAddresses) ? 'Disabled' : 'Enabled'
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
     allowSharedKeyAccess: true
+
     networkAcls: {
       resourceAccessRules: []
       // TODO: Verify if this is needed / Replace with instance rules
@@ -57,11 +58,16 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
       }]
       defaultAction: 'Deny'
     }
+
+    // TODO: Allow for any of three authentication methods: Entra ID, AADDS, or AD DS
     azureFilesIdentityBasedAuthentication: {
       directoryServiceOptions: 'AADDS'
       defaultSharePermission: 'None'
     }
+
     supportsHttpsTrafficOnly: true
+
+    // TODO: Modify if CMK is not required
     encryption: {
       requireInfrastructureEncryption: true
       identity: {
@@ -124,6 +130,7 @@ resource storageAccountLock 'Microsoft.Authorization/locks@2020-05-01' = if (app
   scope: storageAccount
   properties: {
     level: 'CanNotDelete'
+    notes: 'This storage account potentially contains research data. Delete this lock to delete the storage account after validating that the research data is not subject to retention requirements.'
   }
 }
 
@@ -151,6 +158,7 @@ resource privateEndpoints 'Microsoft.Network/privateEndpoints@2022-09-01' = [for
   }
 }]
 
+// Register the private endpoint in the respective private DNS zone
 @batchSize(1)
 resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = [for (pe, i) in privateEndpointInfo: {
   name: 'default'

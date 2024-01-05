@@ -6,23 +6,22 @@ param tags object
 // Reference to the Key Vault where encryption key is stored
 param keyVaultName string
 param keyVaultResourceGroupName string
-param keyVaultSubscriptionId string
+param keyVaultSubscriptionId string = subscription().subscriptionId
+param storageAccountEncryptionKeyName string
 
 param namingConvention string
 param sequence int
 param workloadName string
+param subWorkloadName string = ''
 param uamiId string
 param privateEndpointSubnetId string
 param namingStructure string
+param environment string
 
-param storageAccountEncryptionKeyName string
 @description('An array of valid SMB file share names to create.')
-param fileShareNames array = [
-  'userprofiles'
-  'shared'
-]
+param fileShareNames array
 @description('An array of valid Blob container names to create.')
-param containerNames array = []
+param containerNames array
 
 param debugMode bool = false
 param debugRemoteIp string = ''
@@ -65,15 +64,16 @@ module storageAccountNameModule '../../../module-library/createValidAzResourceNa
   name: take(replace(deploymentNameStructure, '{rtype}', 'saname'), 64)
   params: {
     location: location
-    environment: ''
+    environment: environment
     namingConvention: namingConvention
     resourceType: 'st'
     sequence: sequence
     workloadName: workloadName
+    subWorkloadName: subWorkloadName
   }
 }
 
-// Create a storage account reachable over private endpoint only
+// Create a storage account reachable over private endpoint only. S
 module storageAccountModule 'storageAccount.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'st'), 64)
   params: {
@@ -84,9 +84,12 @@ module storageAccountModule 'storageAccount.bicep' = {
     storageAccountName: storageAccountNameModule.outputs.shortName
     uamiId: uamiId
     privateEndpointInfo: storageAccountPrivateEndpointInfo
+
     debugMode: debugMode
     debugRemoteIp: debugRemoteIp
-    namingStructure: namingStructure
+
+    // HACK: Need to account for empty subWorkloadName in which case the name might have two consecutive segment separators
+    namingStructure: replace(namingStructure, '{subWorkloadName}', subWorkloadName)
     fileShareNames: fileShareNames
     containerNames: containerNames
     privateEndpointSubnetId: privateEndpointSubnetId
@@ -94,3 +97,4 @@ module storageAccountModule 'storageAccount.bicep' = {
 }
 
 output storageAccountName string = storageAccountModule.outputs.name
+output storageAccountId string = storageAccountModule.outputs.id

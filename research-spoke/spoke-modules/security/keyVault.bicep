@@ -2,9 +2,13 @@ param location string = resourceGroup().location
 param namingStructure string
 param keyVaultName string
 
+@description('In debug mode, the debug remote IP address(es) should already be included in this array.')
 param allowedIps array = []
 param keyVaultAdmins array = []
 param roles object = {}
+
+param debugMode bool = false
+param applyDeleteLock bool = !debugMode
 
 param deploymentNameStructure string
 param tags object
@@ -41,7 +45,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' = {
   tags: tags
 }
 
-resource keyVaultLock 'Microsoft.Authorization/locks@2020-05-01' = {
+resource keyVaultLock 'Microsoft.Authorization/locks@2020-05-01' = if (applyDeleteLock) {
   scope: keyVault
   name: replace(namingStructure, '{rtype}', 'kv-lock')
   properties: {
@@ -55,7 +59,7 @@ module keyVaultAdminRbac '../../../module-library/roleAssignments/roleAssignment
   params: {
     kvName: keyVault.name
     principalId: admin
-    roleDefinitionId: roles['Key Vault Administrator']
+    roleDefinitionId: roles.KeyVaultAdministrator
   }
 }]
 

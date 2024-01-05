@@ -6,9 +6,12 @@ param workspaceFriendlyName string
 param remoteAppApplicationGroupInfo array = []
 
 @description('Entra ID object ID of the user or group to be assigned to the Desktop Virtualization User (dvu) role.')
-param objectId string
-@description('Desktop Virtualization User (dvu) role definition ID.')
-param dvuRoleDefinitionId string
+param userObjectId string
+
+param adminObjectId string
+
+@description('RBAC role definitions.')
+param roles object
 
 param usePrivateLinkForHostPool bool = true
 param privateEndpointSubnetId string
@@ -20,8 +23,6 @@ param deploymentTime string = utcNow()
 // TODO: Using logonType param, set up Virtual Machine User Login role for objectId
 @allowed([ 'ad', 'entraID' ])
 param logonType string
-
-param vmulRoleDefinitionId string
 
 // Provide common default RDP properties for research workloads
 var defaultRdpProperties = 'drivestoredirect:s:0;audiomode:i:0;videoplaybackmode:i:1;redirectclipboard:i:0;redirectprinters:i:0;devicestoredirect:s:0;redirectcomports:i:0;redirectsmartcards:i:1;usbdevicestoredirect:s:0;enablecredsspsupport:i:1;use multimon:i:1;'
@@ -60,21 +61,30 @@ resource desktopApplicationGroup 'Microsoft.DesktopVirtualization/applicationGro
 
 // Create a role assignment for the user or group to be assigned to the Virtual Machine User Login (vmul) role, if using Entra ID join
 resource rgRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (logonType == 'entraID') {
-  name: guid(resourceGroup().id, objectId, vmulRoleDefinitionId)
+  name: guid(resourceGroup().id, userObjectId, roles.VirtualMachineUserLogin)
   properties: {
-    roleDefinitionId: vmulRoleDefinitionId
-    principalId: objectId
+    roleDefinitionId: roles.VirtualMachineUserLogin
+    principalId: userObjectId
+  }
+}
+
+// Create a role assignment for the admins to be assigned to the Virtual Machine Administrator Login (vmal) role, if using Entra ID join
+resource rgAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (logonType == 'entraID') {
+  name: guid(resourceGroup().id, adminObjectId, roles.VirtualMachineAdministratorLogin)
+  properties: {
+    roleDefinitionId: roles.VirtualMachineAdministratorLogin
+    principalId: adminObjectId
   }
 }
 
 // LATER: Execute deployment script for Update-AzWvdDesktop -ResourceGroupName rg-wcmprj-avd-demo-eastus-02 -ApplicationGroupName ag-wcmprj-avd-demo-eastus-02 -Name SessionDesktop -FriendlyName Test
 
 resource dagRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(desktopApplicationGroup.id, objectId, dvuRoleDefinitionId)
+  name: guid(desktopApplicationGroup.id, userObjectId, roles.DesktopVirtualizationUser)
   scope: desktopApplicationGroup
   properties: {
-    roleDefinitionId: dvuRoleDefinitionId
-    principalId: objectId
+    roleDefinitionId: roles.DesktopVirtualizationUser
+    principalId: userObjectId
   }
 }
 
@@ -88,8 +98,8 @@ module remoteAppApplicationGroupsModule 'remoteAppApplicationGroup.bicep' = [for
     friendlyName: appGroup.friendlyName
     hostPoolId: hostPool.id
 
-    principalId: objectId
-    roleDefinitionId: dvuRoleDefinitionId
+    principalId: userObjectId
+    roleDefinitionId: roles.DesktopVirtualizationUser
   }
 }]
 

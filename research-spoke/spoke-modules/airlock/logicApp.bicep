@@ -14,7 +14,9 @@ param airlockFileShareName string
 param approverEmail string
 param sourceFolderPath string
 param sinkFolderPath string
-param hubCoreKeyVaultUri string
+
+@description('The URI of the Key Vault that contains the connection string airlock review storage account.')
+param keyVaultUri string
 
 param roles object
 param deploymentNameStructure string
@@ -50,7 +52,7 @@ resource adfConnection 'Microsoft.Web/connections@2018-07-01-preview' = {
 
 // As of 2022-10-23, Bicep does not have type info for this resource type
 #disable-next-line BCP081
-resource stgConnection 'Microsoft.Web/connections@2018-07-01-preview' = {
+resource storageConnection 'Microsoft.Web/connections@2018-07-01-preview' = {
   name: 'api-${prjStorageAcctName}'
   location: location
   properties: {
@@ -104,7 +106,7 @@ resource logicApp 'Microsoft.Logic/workflows@2019-05-01' = {
       '$connections': {
         value: {
           azureblob: {
-            connectionId: stgConnection.id
+            connectionId: storageConnection.id
             connectionName: 'azureblob'
             connectionProperties: {
               authentication: {
@@ -162,11 +164,11 @@ resource logicApp 'Microsoft.Logic/workflows@2019-05-01' = {
       }
       // LATER: Add parameters for pipeline names
       airlockConnStringKvBaseUrl: {
-        value: hubCoreKeyVaultUri
+        value: keyVaultUri
       }
       // TODO: Add parameter for source container name (for trigger value)
       exportApprovedContainerName: {
-        // LATER: Do not hardcode container name
+        // TODO: Do not hardcode container name
         value: 'export-approved'
       }
     }
