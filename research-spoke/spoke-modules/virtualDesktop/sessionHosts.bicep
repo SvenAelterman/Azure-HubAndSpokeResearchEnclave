@@ -148,6 +148,9 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in
       id: availabilitySet.id
     }
   }
+  identity: (logonType == 'entraID') ? {
+    type: 'SystemAssigned'
+  } : null
 }]
 
 // Deploy the AVD agents to each session host
