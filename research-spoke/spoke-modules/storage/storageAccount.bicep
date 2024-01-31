@@ -17,6 +17,10 @@ param fileShareNames array
 @description('An array of valid Blob container names to create.')
 param containerNames array
 
+@description('The type of identity to use for identity-based authentication for Azure Files. Valid values are: AADDS, or AADKERB. AD to follow later.')
+@allowed([ 'AADDS', 'AADKERB', 'None' ])
+param filesIdentityType string
+
 param debugMode bool = false
 param debugRemoteIp string = ''
 param applyDeleteLock bool = !debugMode
@@ -60,8 +64,8 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     }
 
     // TODO: Allow for any of three authentication methods: Entra ID, AADDS, or AD DS
-    azureFilesIdentityBasedAuthentication: {
-      directoryServiceOptions: 'AADDS'
+    azureFilesIdentityBasedAuthentication: (filesIdentityType == 'None') ? null : {
+      directoryServiceOptions: filesIdentityType
       defaultSharePermission: 'None'
     }
 

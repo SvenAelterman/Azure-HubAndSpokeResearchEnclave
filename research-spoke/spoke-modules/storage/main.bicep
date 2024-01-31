@@ -31,6 +31,10 @@ param storageAccountPrivateEndpointGroups array = [
   'file'
 ]
 
+@description('The type of identity to use for identity-based authentication to the file share.')
+@allowed([ 'AADDS', 'AADKERB', 'None' ])
+param filesIdentityType string
+
 resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: keyVaultName
   scope: resourceGroup(keyVaultSubscriptionId, keyVaultResourceGroupName)
@@ -93,6 +97,8 @@ module storageAccountModule 'storageAccount.bicep' = {
     fileShareNames: fileShareNames
     containerNames: containerNames
     privateEndpointSubnetId: privateEndpointSubnetId
+
+    filesIdentityType: filesIdentityType
   }
 }
 

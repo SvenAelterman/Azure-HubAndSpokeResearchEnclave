@@ -407,6 +407,9 @@ module storageModule './spoke-modules/storage/main.bicep' = {
       fileShareNames.shared
       fileShareNames.userProfiles
     ]
+
+    // TODO: This needs additional refinement, including specifying the domain info (if possible)
+    filesIdentityType: (logonType == 'entraID') ? 'AADKERB' : 'AADDS'
   }
 }
 
@@ -564,6 +567,8 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 
     debugMode: debugMode
     debugRemoteIp: debugRemoteIp
+
+    filesIdentityType: (logonType == 'entraID') ? 'AADKERB' : 'AADDS'
   }
 }
 

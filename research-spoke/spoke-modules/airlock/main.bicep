@@ -11,7 +11,7 @@ param namingConvention string
 @maxLength(24)
 param spokePrivateStorageAccountName string
 
-@description('If true, the airlock will be configured to use the hub\'s airlock storage account for the egress review. If false, a new storage account will be created here.')
+@description('FUTURE: If true, the airlock will be configured to use the hub\'s airlock storage account for the egress review. If false, a new storage account will be created here.')
 param useCentralizedReview bool
 
 param researcherAadObjectId string
@@ -55,6 +55,9 @@ param privateEndpointSubnetId string
 
 param tags object = {}
 param subWorkloadName string = 'airlock'
+
+@allowed([ 'AADDS', 'AADKERB' ])
+param filesIdentityType string
 
 param debugMode bool = false
 param debugRemoteIp string = ''
@@ -116,6 +119,8 @@ module spokeAirlockStorageAccountModule '../storage/main.bicep' = if (!useCentra
     storageAccountEncryptionKeyName: storageAccountEncryptionKeyName
 
     tags: union(tags, { 'hidden-title': 'Airlock Review Storage Account' })
+
+    filesIdentityType: filesIdentityType
   }
 }
 
@@ -251,6 +256,9 @@ module publicStorageAccountModule '../storage/storageAccount.bicep' = {
     allowedIpAddresses: publicStorageAccountAllowedIPs
 
     tags: union(tags, { 'hidden-title': 'Public Storage Account' })
+
+    // No identity-based authentication here; there are no file shares
+    filesIdentityType: 'None'
   }
 }
 
