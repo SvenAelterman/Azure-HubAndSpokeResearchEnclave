@@ -27,6 +27,8 @@ param vmImageResourceId string = ''
 @allowed([ 'ad', 'entraID' ])
 param logonType string
 
+param intuneEnrollment bool = false
+
 param deploymentNameStructure string
 param backupPolicyName string
 param recoveryServicesVaultId string
@@ -169,7 +171,7 @@ resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023
           Password: 'PrivateSettingsRef:RegistrationInfoToken'
         }
         aadJoin: (logonType == 'entraID')
-        mdmId: (logonType == 'entraID') ? intuneMdmId : ''
+        mdmId: (logonType == 'entraID' && intuneEnrollment) ? intuneMdmId : ''
       }
     }
     protectedSettings: {
@@ -193,9 +195,9 @@ resource entraIDJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023
     type: 'AADLoginForWindows'
     typeHandlerVersion: '2.0'
     autoUpgradeMinorVersion: true
-    settings: {
+    settings: intuneEnrollment ? {
       mdmId: intuneMdmId
-    }
+    } : null
   }
   dependsOn: [ windowsGuestAttestationExtension[i], windowsVMGuestConfigExtension[i] ]
 }]
