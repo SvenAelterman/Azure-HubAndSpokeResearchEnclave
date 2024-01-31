@@ -5,20 +5,23 @@
 .DESCRIPTION
     Use this for manual deployments only.
     If using a CI/CD pipeline, specify the necessary parameters in the pipeline definition.
+
+.EXAMPLE
+    .\deploy.ps1 -SubscriptionId '00000000-0000-0000-0000-000000000000' -Location 'eastus' -TemplateParameterFile '.\main.bicepparam'
 #>
 
 # LATER: Be more specific about the required modules; it will speed up the initial call
 #Requires -Modules "Az"
 #Requires -PSEdition Core
 
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 Param(
     [Parameter(Mandatory, Position = 1)]
     [string]$SubscriptionId,
     [Parameter(Mandatory, Position = 2)]
     [string]$Location,
-    [Parameter(Position = 3)]
-    [string]$TemplateParameterFile = './main.bicepparam',
+    [Parameter(Mandatory, Position = 3)]
+    [string]$TemplateParameterFile,
     [Parameter(Position = 4)]
     [string]$Environment = 'AzureCloud'
 )
@@ -53,13 +56,13 @@ Set-AzContextWrapper -SubscriptionId $SubscriptionId -Environment $Environment
 
 # Ensure the EncryptionAtHost feature is registered for the current subscription
 # LATER: Do this with a deployment script
-Register-AzProviderFeatureWrapper -ProviderNamespace "Microsoft.Compute" -FeatureName "EncryptionAtHost"
+Register-AzProviderFeatureWrapper -ProviderNamespace "Microsoft.Compute" -FeatureName "EncryptionAtHost" -WhatIf:$WhatIfPreference
 
 # Remove the module from the session
 Remove-Module AzSubscriptionManagement
 
 # Execute the deployment
-$DeploymentResult = New-AzDeployment @CmdLetParameters
+$DeploymentResult = New-AzDeployment @CmdLetParameters -WhatIf:$WhatIfPreference
 
 # Evaluate the deployment results
 if ($DeploymentResult.ProvisioningState -eq 'Succeeded') {

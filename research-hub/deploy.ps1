@@ -22,7 +22,7 @@
 #Requires -Modules "Az"
 #Requires -PSEdition Core
 
-[CmdletBinding()]
+[CmdletBinding(SupportsShouldProcess)]
 param (
     # [Parameter()]
     # [string]$TenantId,
@@ -34,11 +34,12 @@ param (
     [string]$TemplateParameterFile
 )
 
+# TODO: Use PowerShell Module AzSubscriptionManagement
 Select-AzSubscription -Subscription $TargetSubscriptionId
 
 # TODO: Provide a name with timestamp for the deployment
 $DeploymentResults = New-AzDeployment -TemplateFile '.\main.bicep' -TemplateParameterFile $TemplateParameterFile `
-    -Location $Location
+    -Location $Location -WhatIf:$WhatIfPreference
 
 if ($DeploymentResults.ProvisioningState -eq 'Succeeded') {
     Write-Host "🔥 Deployment successful!"
