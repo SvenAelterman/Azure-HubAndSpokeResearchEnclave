@@ -13,12 +13,12 @@
 
 [CmdletBinding()]
 Param(
-    [Parameter(Position = 1)]
-    [string]$TemplateParameterFile = './main.bicepparam',
-    [Parameter(Mandatory, Position = 2)]
+    [Parameter(Mandatory, Position = 1)]
     [string]$SubscriptionId,
-    [Parameter(Mandatory, Position = 3)]
+    [Parameter(Mandatory, Position = 2)]
     [string]$Location,
+    [Parameter(Position = 3)]
+    [string]$TemplateParameterFile = './main.bicepparam',
     [Parameter(Position = 4)]
     [string]$Environment = 'AzureCloud'
 )
