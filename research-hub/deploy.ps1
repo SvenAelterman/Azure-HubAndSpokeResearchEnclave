@@ -26,11 +26,11 @@
 param (
     # [Parameter()]
     # [string]$TenantId,
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory, Position = 1)]
     [string]$TargetSubscriptionId,
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory, Position = 2)]
     [string]$Location,
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory, Position = 3)]
     [string]$TemplateParameterFile
 )
 
