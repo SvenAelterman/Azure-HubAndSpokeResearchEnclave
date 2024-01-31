@@ -148,6 +148,7 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in
       id: availabilitySet.id
     }
   }
+  // Entra ID join requires a system-assigned identity for the VM
   identity: (logonType == 'entraID') ? {
     type: 'SystemAssigned'
   } : null
