@@ -4,8 +4,7 @@ using './main.bicep'
  * A sample parameter file for Research Hub deployment using Entra ID for authentication.
  */
 
-// aad: Use Azure Active Directory; ad: Use Active Directory (or AADDS)
-param logonType = 'aad'
+param logonType = 'entraID'
 
 param tags = {
   lifetime: 'short'

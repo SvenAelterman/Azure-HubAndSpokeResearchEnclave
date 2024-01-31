@@ -29,6 +29,8 @@ param environment string = 'dev'
 @minLength(1)
 param namingConvention string = '{workloadName}-{subWorkloadName}-{environment}-{rtype}-{location}-{sequence}'
 
+param workloadName string = 'ResearchHub'
+
 @description('The Azure built-in regulatory compliance framework to target. This will affect whether or not customer-managed keys, private endpoints, etc. are used. This will *not* deploy a policy assignment.')
 @allowed([
   'NIST80053R5'
@@ -42,13 +44,10 @@ param complianceTarget string = 'NIST80053R5'
 @description('Specifies if logons to virtual machines should use AD or AAD.')
 @allowed([
   'ad'
-  'aad'
+  'entraID'
 ])
 #disable-next-line no-unused-params // LATER: Future use
 param logonType string
-
-@description('If true, will configure the deployment of AVD to make the AVD session hosts usable as research VMs. This will give full desktop access, flow the AVD traffic through the firewall, etc.')
-param useSessionHostAsResearchVm bool = false
 
 /*
  * Optional deployment elements for the Research Hub
@@ -90,7 +89,6 @@ param autoDate string = utcNow('yyyy-MM-dd')
 
 //------------------------------- END PARAMETERS -------------------------------
 
-var workloadName = 'ResearchHub'
 var sequenceFormatted = format('{0:00}', sequence)
 var resourceNamingStructure = replace(replace(replace(replace(namingConvention, '{workloadName}', workloadName), '{environment}', environment), '{sequence}', sequenceFormatted), '{location}', location)
 var rgNamingStructure = replace(resourceNamingStructure, '{rtype}', 'rg')
@@ -135,7 +133,7 @@ var useCMK = complianceFeatureMap[complianceTarget].useCMK
 
 // TODO: Should not be necessary anymore using private endpoints
 #disable-next-line no-unused-vars // LATER: Future use
-var avdTrafficThroughFirewall = useSessionHostAsResearchVm
+var avdTrafficThroughFirewall = researchVmsAreSessionHosts
 
 /*
  * DEFINE THE RESEARCH HUB VIRTUAL NETWORK'S SUBNETS
