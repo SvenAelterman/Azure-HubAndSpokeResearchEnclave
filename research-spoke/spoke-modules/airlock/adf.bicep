@@ -115,8 +115,7 @@ resource integrationRuntime 'Microsoft.DataFactory/factories/integrationRuntimes
 
 // RBAC role assignment for ADF to Key Vault
 module adfKeyVaultRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv-secret.bicep' = {
-  // TODO: use naming convention based on DeploymentNameStructure
-  name: '${adf.name}-rbac-${keyVaultName}'
+  name: take(replace(deploymentNameStructure, '{rtype}', 'rbac-adf-kv-st'), 64)
   scope: resourceGroup(keyVaultResourceGroupName)
   params: {
     principalId: adf.identity.principalId
