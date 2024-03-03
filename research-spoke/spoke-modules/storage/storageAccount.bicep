@@ -1,3 +1,4 @@
+@description('The name of the storage account to be created or updated.')
 param storageAccountName string
 param location string = resourceGroup().location
 param tags object
@@ -7,7 +8,9 @@ param uamiId string
 param encryptionKeyName string
 @description('URI of the Key Vault where the customer-managed encryption key is stored.')
 param keyVaultUri string
+@description('The structure to use to generate resource names, such as private endpoints. etc.')
 param namingStructure string
+@description('The Azure resource ID of the subnet where the private endpoint will be created.')
 param privateEndpointSubnetId string
 
 @description('An array of objects with the following schema: { subResourceName: string, dnsZoneName: string, dnsZoneId: string }')
@@ -36,6 +39,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
   location: location
   tags: tags
   sku: {
+    // TODO: the external facing account might not need to be GRS
     name: 'Standard_GRS'
   }
   kind: 'StorageV2'
@@ -46,20 +50,28 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     }
   }
   properties: {
+    // Note: Bypass and Resource Access Rules still take priority over this
     publicNetworkAccess: !debugMode && empty(actualAllowedIpAddresses) ? 'Disabled' : 'Enabled'
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
+    // Required for ADF access to file shares (no support for managed identity yet)
     allowSharedKeyAccess: true
 
     networkAcls: {
+      // TODO: Add resource access rules for Logic App
       resourceAccessRules: []
       // TODO: Verify if this is needed / Replace with instance rules
+      // 2024-02-26: This appears to be necessary for starting the ADF trigger
+      // Logic App trigger can access the storage account with resource access rules even when bypass = 'None'
+      // Only the external-facing storage account needs to allow this Bypass to allow the ADF trigger to start
       bypass: 'AzureServices'
       virtualNetworkRules: []
       ipRules: [for allowedIp in actualAllowedIpAddresses: {
         value: allowedIp
         action: 'Allow'
       }]
+
+      // Note: Bypass and Resource Access Rules still take priority over this
       defaultAction: 'Deny'
     }
 

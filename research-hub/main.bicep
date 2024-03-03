@@ -41,7 +41,7 @@ param workloadName string = 'ResearchHub'
 // Default to the strictest supported compliance framework
 param complianceTarget string = 'NIST80053R5'
 
-@description('Specifies if logons to virtual machines should use AD or AAD.')
+@description('Specifies if logons to virtual machines should use AD or Entra ID.')
 @allowed([
   'ad'
   'entraID'
@@ -104,6 +104,7 @@ var dateModifiedTag = addDateModifiedTag ? {
 
 var actualTags = union(tags, dateCreatedTag, dateModifiedTag)
 
+// TODO: Make this output of a shared module
 var complianceFeatureMap = {
   NIST80053R5: {
     usePrivateEndpoints: true
@@ -140,7 +141,7 @@ var avdTrafficThroughFirewall = researchVmsAreSessionHosts
  */
 
 // Variable to hold the subnets that are always required, regardless of optional components
-// TODO: Change subnet names to match the naming convention *Subnet: DataSubnet, AirlockSubnet, etc.
+// TODO: BREAKING CHANGE: Change subnet names to match the naming convention *Subnet: DataSubnet, AirlockSubnet, etc.
 var requiredSubnets = {
   data: {
     serviceEndpoints: []
@@ -159,6 +160,7 @@ var requiredSubnets = {
     order: 4
     subnetCidr: 24
   }
+  // TODO: The need for this subnet depends on the Firewall SKU and forced tunneling
   AzureFirewallManagementSubnet: {
     serviceEndpoints: []
     routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
@@ -191,7 +193,7 @@ var AzureBastionSubnet = deployBastion ? {
 var GatewaySubnet = deployVpn ? {
   GatewaySubnet: {
     routes: []
-    // securityRules: [] Does not support NSGs
+    // securityRules: [] GatewaySubnet does not support NSGs
     delegation: ''
     order: 2 // There will already be a /26 for Bastion if enabled, so this becomes the third /27
     subnetCidr: 27 // Minimum recommended for GatewaySubnet
