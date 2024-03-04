@@ -1,13 +1,18 @@
 {
-    "cSpell.words": [
-        "aadcdn",
-        "azuresynapse",
-        "enterpriseregistration",
-        "Fqdns",
-        "microsoftonline",
-        "msauth",
-        "msftauth",
-        "privatelink",
-        "wvdportalstorageblob"
-    ]
+  "cSpell.words": [
+    "aadcdn",
+    "azureedge",
+    "azureportal",
+    "azuresynapse",
+    "catalogartifact",
+    "enterpriseregistration",
+    "Fqdns",
+    "microsoftonline",
+    "msauth",
+    "msftauth",
+    "privatelink",
+    "reactblade",
+    "usgovcloudapi",
+    "wvdportalstorageblob"
+  ]
 }
