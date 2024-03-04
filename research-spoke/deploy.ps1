@@ -69,7 +69,7 @@ Set-AzContextWrapper -SubscriptionId $TargetSubscriptionId -Environment $Environ
 Register-AzProviderFeatureWrapper -ProviderNamespace "Microsoft.Compute" -FeatureName "EncryptionAtHost"
 
 # Remove the module from the session
-Remove-Module AzSubscriptionManagement
+Remove-Module AzSubscriptionManagement -WhatIf:$false
 
 # Execute the deployment
 $DeploymentResult = New-AzDeployment @CmdLetParameters

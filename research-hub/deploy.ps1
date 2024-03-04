@@ -19,6 +19,9 @@
 
 .EXAMPLE
     ./deploy.ps1 '.\main.hub.bicepparam' '00000000-0000-0000-0000-000000000000' 'eastus'
+
+.EXAMPLE
+    ./deploy.ps1 '.\main.hub.bicepparam' '00000000-0000-0000-0000-000000000000' 'eastus' 'AzureUSGovernment'
 #>
 
 # LATER: Be more specific about the required modules; it will speed up the initial call
@@ -32,7 +35,9 @@ param (
     [Parameter(Mandatory, Position = 2)]
     [string]$TargetSubscriptionId,
     [Parameter(Mandatory, Position = 3)]
-    [string]$Location
+    [string]$Location,
+    [Parameter(Position = 4)]
+    [string]$Environment = 'AzureCloud'
 )
 
 # Define common parameters for the New-AzDeployment cmdlet
@@ -42,7 +47,18 @@ param (
     Location              = $Location
 }
 
-Select-AzSubscription -Subscription $TargetSubscriptionId
+# Import the Azure subscription management module
+Import-Module ..\scripts\PowerShell\Modules\AzSubscriptionManagement.psm1
+
+# Determine if a cloud context switch is required
+Set-AzContextWrapper -SubscriptionId $TargetSubscriptionId -Environment $Environment
+
+# Ensure the EncryptionAtHost feature is registered for the current subscription
+# LATER: Do this with a deployment script in Bicep
+Register-AzProviderFeatureWrapper -ProviderNamespace "Microsoft.Compute" -FeatureName "EncryptionAtHost"
+
+# Remove the module from the session
+Remove-Module AzSubscriptionManagement -WhatIf:$false
 
 [string]$DeploymentName = "ResearchHub-$(Get-Date -Format 'yyyyMMddThhmmssZ' -AsUTC)"
 $CmdLetParameters.Add('Name', $DeploymentName)
