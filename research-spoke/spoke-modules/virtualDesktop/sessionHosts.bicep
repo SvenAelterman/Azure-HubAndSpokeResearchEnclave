@@ -9,6 +9,7 @@ param vmSize string
 
 param diskEncryptionSetId string
 param subnetId string
+
 @secure()
 param vmLocalAdminUsername string
 @secure()
@@ -84,7 +85,7 @@ resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [for i in range
 
 // Create the session hosts
 resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in range(0, vmCount): {
-  name: replace(namingStructure, '{rtype}', '${vmNamePrefix}${i}') // '${vmNamePrefix}${i}'
+  name: replace(namingStructure, '{rtype}', '${vmNamePrefix}${i}')
   location: location
   tags: tags
   properties: {
@@ -94,7 +95,7 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in
       vmSize: vmSize
     }
     osProfile: {
-      computerName: '${vmNamePrefix}${i}' // Same as the VM's resource name
+      computerName: '${vmNamePrefix}${i}'
       adminUsername: vmLocalAdminUsername
       adminPassword: vmLocalAdminPassword
       windowsConfiguration: {
