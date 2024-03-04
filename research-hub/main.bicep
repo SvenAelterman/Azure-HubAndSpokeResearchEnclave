@@ -56,7 +56,7 @@ param logonType string
 @description('If true, will deploy a Bastion host in the virtual network; otherwise, Bastion will not be deployed.')
 param deployBastion bool = true
 
-@description('If true, will deploy a GatewaySubnet and VPN gateway in the virtual network; otherwise, VPN will not be deployed.')
+@description('If true, will deploy a GatewaySubnet and VPN gateway in the virtual network; otherwise, VPN infrastructure will not be deployed.')
 param deployVpn bool = false
 
 @description('If true, the research VMs will be AVD session hosts and AVD will be deployed in the spoke only for centralized airlock review purposes.')
@@ -143,7 +143,7 @@ var avdTrafficThroughFirewall = researchVmsAreSessionHosts
 // Variable to hold the subnets that are always required, regardless of optional components
 // TODO: BREAKING CHANGE: Change subnet names to match the naming convention *Subnet: DataSubnet, AirlockSubnet, etc.
 var requiredSubnets = {
-  data: {
+  DataSubnet: {
     serviceEndpoints: []
     routes: []
     securityRules: []
@@ -169,7 +169,7 @@ var requiredSubnets = {
     order: 3
     subnetCidr: 24
   }
-  airlock: {
+  AirlockSubnet: {
     serviceEndpoints: []
     routes: [] // Routes through the firewall will be added later
     securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
@@ -378,3 +378,7 @@ resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' = if (!researchVm
 //     azureFirewallModule
 //   ]
 // }
+
+output hubFirewallIp string = azureFirewallModule.outputs.fwPrIp
+output hubVnetResourceId string = networkModule.outputs.vNetId
+output hubPrivateDnsZonesResourceGroupId string = networkRg.id
