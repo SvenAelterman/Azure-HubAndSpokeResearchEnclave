@@ -17,7 +17,6 @@ var vmTemplateUri = '${nestedTemplatesLocation}managedDisks-galleryvm.json'
 var rdshPrefix = '${avdVmHostNameStructure}-'
 
 // Create availability set
-// LATER: Consider moving this to the AVD resource group instead of the VM resource group [the availability set should survive deleting VMs]
 resource availabilitySet 'Microsoft.Compute/availabilitySets@2021-11-01' = {
   name: replace(namingStructure, '{rtype}', 'avail')
   location: location
@@ -41,7 +40,6 @@ resource vmDeployment 'Microsoft.Resources/deployments@2021-04-01' = {
     }
     parameters: {
       artifactsLocation: {
-        // LATER: Check for updated artifacts
         #disable-next-line no-hardcoded-env-urls
         value: 'https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/Configuration_02-23-2022.zip'
       }

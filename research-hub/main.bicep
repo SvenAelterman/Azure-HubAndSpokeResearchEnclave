@@ -29,6 +29,8 @@ param environment string = 'dev'
 @minLength(1)
 param namingConvention string = '{workloadName}-{subWorkloadName}-{environment}-{rtype}-{location}-{sequence}'
 
+param workloadName string = 'ResearchHub'
+
 @description('The Azure built-in regulatory compliance framework to target. This will affect whether or not customer-managed keys, private endpoints, etc. are used. This will *not* deploy a policy assignment.')
 @allowed([
   'NIST80053R5'
@@ -39,16 +41,13 @@ param namingConvention string = '{workloadName}-{subWorkloadName}-{environment}-
 // Default to the strictest supported compliance framework
 param complianceTarget string = 'NIST80053R5'
 
-@description('Specifies if logons to virtual machines should use AD or AAD.')
+@description('Specifies if logons to virtual machines should use AD or Entra ID.')
 @allowed([
   'ad'
-  'aad'
+  'entraID'
 ])
 #disable-next-line no-unused-params // LATER: Future use
 param logonType string
-
-@description('If true, will configure the deployment of AVD to make the AVD session hosts usable as research VMs. This will give full desktop access, flow the AVD traffic through the firewall, etc.')
-param useSessionHostAsResearchVm bool = false
 
 /*
  * Optional deployment elements for the Research Hub
@@ -57,7 +56,7 @@ param useSessionHostAsResearchVm bool = false
 @description('If true, will deploy a Bastion host in the virtual network; otherwise, Bastion will not be deployed.')
 param deployBastion bool = true
 
-@description('If true, will deploy a GatewaySubnet and VPN gateway in the virtual network; otherwise, VPN will not be deployed.')
+@description('If true, will deploy a GatewaySubnet and VPN gateway in the virtual network; otherwise, VPN infrastructure will not be deployed.')
 param deployVpn bool = false
 
 @description('If true, the research VMs will be AVD session hosts and AVD will be deployed in the spoke only for centralized airlock review purposes.')
@@ -90,7 +89,6 @@ param autoDate string = utcNow('yyyy-MM-dd')
 
 //------------------------------- END PARAMETERS -------------------------------
 
-var workloadName = 'ResearchHub'
 var sequenceFormatted = format('{0:00}', sequence)
 var resourceNamingStructure = replace(replace(replace(replace(namingConvention, '{workloadName}', workloadName), '{environment}', environment), '{sequence}', sequenceFormatted), '{location}', location)
 var rgNamingStructure = replace(resourceNamingStructure, '{rtype}', 'rg')
@@ -106,6 +104,7 @@ var dateModifiedTag = addDateModifiedTag ? {
 
 var actualTags = union(tags, dateCreatedTag, dateModifiedTag)
 
+// TODO: Make this output of a shared module
 var complianceFeatureMap = {
   NIST80053R5: {
     usePrivateEndpoints: true
@@ -135,16 +134,16 @@ var useCMK = complianceFeatureMap[complianceTarget].useCMK
 
 // TODO: Should not be necessary anymore using private endpoints
 #disable-next-line no-unused-vars // LATER: Future use
-var avdTrafficThroughFirewall = useSessionHostAsResearchVm
+var avdTrafficThroughFirewall = researchVmsAreSessionHosts
 
 /*
  * DEFINE THE RESEARCH HUB VIRTUAL NETWORK'S SUBNETS
  */
 
 // Variable to hold the subnets that are always required, regardless of optional components
-// TODO: Change subnet names to match the naming convention *Subnet: DataSubnet, AirlockSubnet, etc.
+// TODO: BREAKING CHANGE: Change subnet names to match the naming convention *Subnet: DataSubnet, AirlockSubnet, etc.
 var requiredSubnets = {
-  data: {
+  DataSubnet: {
     serviceEndpoints: []
     routes: []
     securityRules: []
@@ -161,6 +160,7 @@ var requiredSubnets = {
     order: 4
     subnetCidr: 24
   }
+  // TODO: The need for this subnet depends on the Firewall SKU and forced tunneling
   AzureFirewallManagementSubnet: {
     serviceEndpoints: []
     routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
@@ -169,7 +169,7 @@ var requiredSubnets = {
     order: 3
     subnetCidr: 24
   }
-  airlock: {
+  AirlockSubnet: {
     serviceEndpoints: []
     routes: [] // Routes through the firewall will be added later
     securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
@@ -193,7 +193,7 @@ var AzureBastionSubnet = deployBastion ? {
 var GatewaySubnet = deployVpn ? {
   GatewaySubnet: {
     routes: []
-    // securityRules: [] Does not support NSGs
+    // securityRules: [] GatewaySubnet does not support NSGs
     delegation: ''
     order: 2 // There will already be a /26 for Bastion if enabled, so this becomes the third /27
     subnetCidr: 27 // Minimum recommended for GatewaySubnet
@@ -378,3 +378,7 @@ resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' = if (!researchVm
 //     azureFirewallModule
 //   ]
 // }
+
+output hubFirewallIp string = azureFirewallModule.outputs.fwPrIp
+output hubVnetResourceId string = networkModule.outputs.vNetId
+output hubPrivateDnsZonesResourceGroupId string = networkRg.id

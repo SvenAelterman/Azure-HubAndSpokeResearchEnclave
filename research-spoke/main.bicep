@@ -236,13 +236,14 @@ var defaultRoutes = json(replace(loadTextContent('./routes/defaultRouteTable.jso
 
 var subnets = {
   ComputeSubnet: {
-    addressPrefix: cidrSubnet(networkAddressSpaces[0], 25, 0) // '${replace(networkAddressSpaces[0], '{octet4}', '128')}/25'
+    addressPrefix: cidrSubnet(networkAddressSpaces[0], 25, 0)
     // TODO: When not using research VMs as session hosts, allow RDP and SSH from hub
+    // TODO: Allow RDP and SSH from BastionSubnet in hub (if present)
     securityRules: []
     routes: defaultRoutes
   }
   PrivateEndpointSubnet: {
-    addressPrefix: cidrSubnet(networkAddressSpaces[0], 26, 2) // '${replace(networkAddressSpaces[0], '{octet4}', '64')}/26'
+    addressPrefix: cidrSubnet(networkAddressSpaces[0], 26, 2)
     securityRules: []
     routes: defaultRoutes
   }
@@ -319,6 +320,9 @@ module keyVaultModule './spoke-modules/security/keyVault.bicep' = {
     deploymentNameStructure: deploymentNameStructure
     tags: actualTags
     debugMode: debugMode
+
+    // This parameter is passed to allow determining if a resource lock needs to be created
+    useCMK: useCMK
   }
 }
 
@@ -407,6 +411,9 @@ module storageModule './spoke-modules/storage/main.bicep' = {
       fileShareNames.shared
       fileShareNames.userProfiles
     ]
+
+    // TODO: This needs additional refinement, including specifying the domain info (if possible)
+    filesIdentityType: (logonType == 'entraID') ? 'AADKERB' : 'AADDS'
   }
 }
 
@@ -564,6 +571,8 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 
     debugMode: debugMode
     debugRemoteIp: debugRemoteIp
+
+    filesIdentityType: (logonType == 'entraID') ? 'AADKERB' : 'AADDS'
   }
 }
 

@@ -9,6 +9,7 @@ param vmSize string
 
 param diskEncryptionSetId string
 param subnetId string
+
 @secure()
 param vmLocalAdminUsername string
 @secure()
@@ -26,6 +27,8 @@ param vmImageResourceId string = ''
 
 @allowed([ 'ad', 'entraID' ])
 param logonType string
+
+param intuneEnrollment bool = false
 
 param deploymentNameStructure string
 param backupPolicyName string
@@ -82,7 +85,7 @@ resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [for i in range
 
 // Create the session hosts
 resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in range(0, vmCount): {
-  name: replace(namingStructure, '{rtype}', '${vmNamePrefix}${i}') // '${vmNamePrefix}${i}'
+  name: replace(namingStructure, '{rtype}', '${vmNamePrefix}${i}')
   location: location
   tags: tags
   properties: {
@@ -92,7 +95,7 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in
       vmSize: vmSize
     }
     osProfile: {
-      computerName: '${vmNamePrefix}${i}' // Same as the VM's resource name
+      computerName: '${vmNamePrefix}${i}'
       adminUsername: vmLocalAdminUsername
       adminPassword: vmLocalAdminPassword
       windowsConfiguration: {
@@ -146,6 +149,10 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [for i in
       id: availabilitySet.id
     }
   }
+  // Entra ID join requires a system-assigned identity for the VM
+  identity: (logonType == 'entraID') ? {
+    type: 'SystemAssigned'
+  } : null
 }]
 
 // Deploy the AVD agents to each session host
@@ -169,7 +176,7 @@ resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023
           Password: 'PrivateSettingsRef:RegistrationInfoToken'
         }
         aadJoin: (logonType == 'entraID')
-        mdmId: (logonType == 'entraID') ? intuneMdmId : ''
+        mdmId: (logonType == 'entraID' && intuneEnrollment) ? intuneMdmId : ''
       }
     }
     protectedSettings: {
@@ -193,9 +200,9 @@ resource entraIDJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023
     type: 'AADLoginForWindows'
     typeHandlerVersion: '2.0'
     autoUpgradeMinorVersion: true
-    settings: {
+    settings: intuneEnrollment ? {
       mdmId: intuneMdmId
-    }
+    } : null
   }
   dependsOn: [ windowsGuestAttestationExtension[i], windowsVMGuestConfigExtension[i] ]
 }]

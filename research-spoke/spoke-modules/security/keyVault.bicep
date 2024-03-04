@@ -2,13 +2,16 @@ param location string = resourceGroup().location
 param namingStructure string
 param keyVaultName string
 
-@description('In debug mode, the debug remote IP address(es) should already be included in this array.')
+@description('If debug mode, the debug remote IP address(es) should already be included in this array.')
 param allowedIps array = []
+@description('If debug mode, the debug users and groups should already be included in this array.')
 param keyVaultAdmins array = []
 param roles object = {}
 
+param useCMK bool
 param debugMode bool = false
-param applyDeleteLock bool = !debugMode
+@description('If true, the Key Vault will be locked to prevent deletion. If false, the Key Vault will not be locked. By default, the Key Vault have a lock if not in debug mode or when customer-managed keys are used.')
+param applyDeleteLock bool = !debugMode || useCMK
 
 param deploymentNameStructure string
 param tags object
