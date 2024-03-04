@@ -5,17 +5,20 @@
 .DESCRIPTION
     Deploy the Research Hub resources to the target subscription.
 
+.PARAMETER TemplateParameterFile
+    The path to the template parameter file in bicepparam format.
+
 .PARAMETER TargetSubscriptionId
     The subscription ID to deploy the resources to. The subscription must already exist.
 
 .PARAMETER Location
     The Azure region to deploy the resources to.
 
-.PARAMETER TemplateParameterFile
-    The path to the template parameter file in bicepparam format.
+.EXAMPLE
+    ./deploy.ps1 -TemplateParameterFile '.\main.hub.bicepparam' -TargetSubscriptionId '00000000-0000-0000-0000-000000000000' -Location 'eastus'
 
 .EXAMPLE
-    .\deploy.ps1 -TargetSubscriptionId '00000000-0000-0000-0000-000000000000' -Location 'eastus' -TemplateParameterFile '.\main.hub.bicepparam'
+    ./deploy.ps1 '.\main.hub.bicepparam' '00000000-0000-0000-0000-000000000000' 'eastus'
 #>
 
 # LATER: Be more specific about the required modules; it will speed up the initial call
@@ -24,12 +27,12 @@
 
 [CmdletBinding()]
 param (
-    [Parameter(Mandatory)]
+    [Parameter(Mandatory, Position = 1)]
+    [string]$TemplateParameterFile,
+    [Parameter(Mandatory, Position = 2)]
     [string]$TargetSubscriptionId,
-    [Parameter(Mandatory)]
-    [string]$Location,
-    [Parameter(Mandatory)]
-    [string]$TemplateParameterFile
+    [Parameter(Mandatory, Position = 3)]
+    [string]$Location
 )
 
 # Define common parameters for the New-AzDeployment cmdlet

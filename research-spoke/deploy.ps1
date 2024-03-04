@@ -6,8 +6,20 @@
     Use this for manual deployments only.
     If using a CI/CD pipeline, specify the necessary parameters in the pipeline definition.
 
+.PARAMETER TemplateParameterFile
+    The path to the template parameter file in bicepparam format.
+
+.PARAMETER TargetSubscriptionId
+    The subscription ID to deploy the resources to. The subscription must already exist.
+
+.PARAMETER Location
+    The Azure region to deploy the resources to.
+
 .EXAMPLE
-    .\deploy.ps1 -TemplateParameterFile '.\main.hub.bicepparam' -TargetSubscriptionId '00000000-0000-0000-0000-000000000000' -Location 'eastus' 
+    ./deploy.ps1 -TemplateParameterFile '.\main.prj.bicepparam' -TargetSubscriptionId '00000000-0000-0000-0000-000000000000' -Location 'eastus' 
+
+    .EXAMPLE
+    ./deploy.ps1 '.\main.prj.bicepparam' '00000000-0000-0000-0000-000000000000' 'eastus'
 #>
 
 # LATER: Be more specific about the required modules; it will speed up the initial call
