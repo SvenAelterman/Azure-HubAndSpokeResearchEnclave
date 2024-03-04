@@ -320,6 +320,9 @@ module keyVaultModule './spoke-modules/security/keyVault.bicep' = {
     deploymentNameStructure: deploymentNameStructure
     tags: actualTags
     debugMode: debugMode
+
+    // This parameter is passed to allow determining if a resource lock needs to be created
+    useCMK: useCMK
   }
 }
 
