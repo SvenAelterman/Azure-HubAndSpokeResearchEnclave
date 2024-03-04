@@ -20,6 +20,7 @@ param fileShareNames array
 @description('An array of valid Blob container names to create.')
 param containerNames array
 
+// TODO: Update AADDS to EDS (Entra Domain Services)
 @description('The type of identity to use for identity-based authentication for Azure Files. Valid values are: AADDS, or AADKERB. AD to follow later.')
 @allowed([ 'AADDS', 'AADKERB', 'None' ])
 param filesIdentityType string
@@ -58,9 +59,8 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     allowSharedKeyAccess: true
 
     networkAcls: {
-      // TODO: Add resource access rules for Logic App
+      // TODO: Add resource access rules for export approval Logic App
       resourceAccessRules: []
-      // TODO: Verify if this is needed / Replace with instance rules
       // 2024-02-26: This appears to be necessary for starting the ADF trigger
       // Logic App trigger can access the storage account with resource access rules even when bypass = 'None'
       // Only the external-facing storage account needs to allow this Bypass to allow the ADF trigger to start
@@ -75,7 +75,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
       defaultAction: 'Deny'
     }
 
-    // TODO: Allow for any of three authentication methods: Entra ID, AADDS, or AD DS
+    // TODO: Allow for any of three authentication methods: Entra ID, Entra Domain Services, or AD DS
     azureFilesIdentityBasedAuthentication: (filesIdentityType == 'None') ? null : {
       directoryServiceOptions: filesIdentityType
       defaultSharePermission: 'None'
