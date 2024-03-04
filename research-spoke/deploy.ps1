@@ -5,6 +5,9 @@
 .DESCRIPTION
     Use this for manual deployments only.
     If using a CI/CD pipeline, specify the necessary parameters in the pipeline definition.
+
+.EXAMPLE
+    .\deploy.ps1 -TemplateParameterFile '.\main.hub.bicepparam' -TargetSubscriptionId '00000000-0000-0000-0000-000000000000' -Location 'eastus' 
 #>
 
 # LATER: Be more specific about the required modules; it will speed up the initial call
@@ -16,7 +19,7 @@ Param(
     [Parameter(Position = 1)]
     [string]$TemplateParameterFile = './main.bicepparam',
     [Parameter(Mandatory, Position = 2)]
-    [string]$SubscriptionId,
+    [string]$TargetSubscriptionId,
     [Parameter(Mandatory, Position = 3)]
     [string]$Location,
     [Parameter(Position = 4)]
@@ -25,15 +28,15 @@ Param(
 
 # Define common parameters for the New-AzDeployment cmdlet
 [hashtable]$CmdLetParameters = @{
-    TemplateFile = '.\main.bicep'
+    TemplateFile          = './main.bicep'
+    TemplateParameterFile = $TemplateParameterFile
+    Location              = $Location
 }
 
 # Process the template parameter file and read relevant values for use here
 Write-Verbose "Using template parameter file '$TemplateParameterFile'"
 [string]$TemplateParameterJsonFile = [System.IO.Path]::ChangeExtension($TemplateParameterFile, 'json')
 bicep build-params $TemplateParameterFile --outfile $TemplateParameterJsonFile
-
-$CmdLetParameters.Add('TemplateParameterFile', $TemplateParameterJsonFile)
 
 # Read the values from the parameters file, to use when generating the $DeploymentName value
 $ParameterFileContents = (Get-Content $TemplateParameterJsonFile | ConvertFrom-Json)
@@ -43,16 +46,14 @@ $WorkloadName = $ParameterFileContents.parameters.workloadName.value
 [string]$DeploymentName = "$WorkloadName-$(Get-Date -Format 'yyyyMMddThhmmssZ' -AsUTC)"
 $CmdLetParameters.Add('Name', $DeploymentName)
 
-$CmdLetParameters.Add('Location', $Location)
-
 # Import the Azure subscription management module
 Import-Module ..\scripts\PowerShell\Modules\AzSubscriptionManagement.psm1
 
 # Determine if a cloud context switch is required
-Set-AzContextWrapper -SubscriptionId $SubscriptionId -Environment $Environment
+Set-AzContextWrapper -SubscriptionId $TargetSubscriptionId -Environment $Environment
 
 # Ensure the EncryptionAtHost feature is registered for the current subscription
-# LATER: Do this with a deployment script
+# LATER: Do this with a deployment script in Bicep
 Register-AzProviderFeatureWrapper -ProviderNamespace "Microsoft.Compute" -FeatureName "EncryptionAtHost"
 
 # Remove the module from the session
@@ -64,6 +65,8 @@ $DeploymentResult = New-AzDeployment @CmdLetParameters
 # Evaluate the deployment results
 if ($DeploymentResult.ProvisioningState -eq 'Succeeded') {
     Write-Host "🔥 Deployment succeeded."
+
+    $DeploymentResult.Outputs
 }
 else {
     $DeploymentResult
