@@ -28,7 +28,7 @@
         ],
         "fqdnTags": [],
         "webCategories": [],
-        "targetFqdns": ["client.wvd.microsoft.com"],
+        "targetFqdns": ["client.wvd.microsoft.com", "rdweb.wvd.azure.us"],
         "targetUrls": [],
         "terminateTLS": false,
         "sourceAddresses": ["*"],
@@ -36,7 +36,7 @@
         "sourceIpGroups": []
       }
     ],
-    "name": "Block_WVDWeb",
+    "name": "Block_AVDWeb",
     "priority": 100
   }
 ]

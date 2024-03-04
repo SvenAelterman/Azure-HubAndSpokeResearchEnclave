@@ -7,6 +7,7 @@
     "catalogartifact",
     "enterpriseregistration",
     "Fqdns",
+    "loganalytics",
     "microsoftonline",
     "msauth",
     "msftauth",

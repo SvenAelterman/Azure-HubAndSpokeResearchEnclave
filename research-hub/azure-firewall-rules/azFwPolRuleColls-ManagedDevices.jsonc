@@ -1,314 +1,695 @@
-[
-  {
-    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
-    "action": {
-      "type": "Allow"
+{
+  "AzureCloud": [
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "NetworkRule",
+          "name": "GuestAndHybridMgt",
+          "ipProtocols": ["TCP"],
+          "sourceAddresses": ["*"],
+          "sourceIpGroups": [],
+          "destinationAddresses": ["GuestAndHybridManagement"],
+          "destinationIpGroups": [],
+          "destinationFqdns": [],
+          "destinationPorts": ["*"]
+        }
+      ],
+      "name": "Intune_NW",
+      "priority": 200
     },
-    "rules": [
-      {
-        "ruleType": "NetworkRule",
-        "name": "GuestAndHybridMgt",
-        "ipProtocols": ["TCP"],
-        "sourceAddresses": ["*"],
-        "sourceIpGroups": [],
-        "destinationAddresses": ["GuestAndHybridManagement"],
-        "destinationIpGroups": [],
-        "destinationFqdns": [],
-        "destinationPorts": ["*"]
-      }
-    ],
-    "name": "Intune",
-    "priority": 200
-  },
-  {
-    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
-    "action": {
-      "type": "Allow"
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "WindowsUpdate_tag",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": ["WindowsUpdate"],
+          "webCategories": [],
+          "targetFqdns": [],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "WindowsUpdate",
+      "priority": 500
     },
-    "rules": [
-      {
-        "ruleType": "ApplicationRule",
-        "name": "WindowsUpdate_tag",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": ["WindowsUpdate"],
-        "webCategories": [],
-        "targetFqdns": [],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
-      }
-    ],
-    "name": "WindowsUpdate",
-    "priority": 500
-  },
-  {
-    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
-    "action": {
-      "type": "Allow"
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "manage_microsoft_com",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["*.manage.microsoft.com", "manage.microsoft.com"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "office_config",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["config.office.com", "*.officeconfig.msocdn.com"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "graph_windows_net",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["graph.windows.net"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "enterprise_reg",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "enterpriseregistration.windows.net",
+            "EnterpriseEnrollment.manage.microsoft.com"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Scripts_Win32_Apps",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "swda01-mscdn.azureedge.net",
+            "swda02-mscdn.azureedge.net",
+            "swdb01-mscdn.azureedge.net",
+            "swdb02-mscdn.azureedge.net",
+            "swdc01-mscdn.azureedge.net",
+            "swdc02-mscdn.azureedge.net",
+            "swdd01-mscdn.azureedge.net",
+            "swdd02-mscdn.azureedge.net",
+            "swdin01-mscdn.azureedge.net",
+            "swdin02-mscdn.azureedge.net"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "Intune_App",
+      "priority": 300
     },
-    "rules": [
-      {
-        "ruleType": "ApplicationRule",
-        "name": "manage_microsoft_com",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["*.manage.microsoft.com", "manage.microsoft.com"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
+    // TODO: Advanced: Add PowerShell and Win32 Apps URLs, by geography
+    // https://learn.microsoft.com/en-us/mem/intune/fundamentals/intune-endpoints?tabs=north-america#network-requirements-for-powershell-scripts-and-win32-apps
+    // TODO: Advanced: Health Attestation Service URLs, by geography
+    // https://learn.microsoft.com/en-us/mem/intune/fundamentals/intune-endpoints?tabs=north-america#migrating-device-health-attestation-compliance-policies-to-microsoft-azure-attestation
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
       },
-      {
-        "ruleType": "ApplicationRule",
-        "name": "office_config",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["config.office.com", "*.officeconfig.msocdn.com"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
-      },
-      {
-        "ruleType": "ApplicationRule",
-        "name": "graph_windows_net",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["graph.windows.net"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
-      },
-      {
-        "ruleType": "ApplicationRule",
-        "name": "enterprise_reg",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["enterpriseregistration.windows.net"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
-      }
-    ],
-    "name": "Intune_App",
-    "priority": 300
-  },
-  {
-    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
-    "action": {
-      "type": "Allow"
+      "rules": [
+        {
+          "ruleType": "NetworkRule",
+          "name": "Entra_ID_Tag",
+          "ipProtocols": ["TCP"],
+          "sourceAddresses": ["*"],
+          "sourceIpGroups": [],
+          "destinationAddresses": ["AzureActiveDirectory"],
+          "destinationIpGroups": [],
+          "destinationFqdns": [],
+          "destinationPorts": ["80", "443"]
+        },
+        {
+          "ruleType": "NetworkRule",
+          "name": "Entra_ID_metadata",
+          "ipProtocols": ["TCP"],
+          "sourceAddresses": ["*"],
+          "sourceIpGroups": [],
+          "destinationAddresses": ["169.254.169.254"],
+          "destinationIpGroups": [],
+          "destinationFqdns": [],
+          "destinationPorts": ["80", "443"]
+        }
+      ],
+      "name": "Entra_ID_NW",
+      "priority": 250
     },
-    "rules": [
-      {
-        "ruleType": "NetworkRule",
-        "name": "AAD_Tag",
-        "ipProtocols": ["TCP"],
-        "sourceAddresses": ["*"],
-        "sourceIpGroups": [],
-        "destinationAddresses": ["AzureActiveDirectory"],
-        "destinationIpGroups": [],
-        "destinationFqdns": [],
-        "destinationPorts": ["80", "443"]
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
       },
-      {
-        "ruleType": "NetworkRule",
-        "name": "AAD_metadata",
-        "ipProtocols": ["TCP"],
-        "sourceAddresses": ["*"],
-        "sourceIpGroups": [],
-        "destinationAddresses": ["169.254.169.254"],
-        "destinationIpGroups": [],
-        "destinationFqdns": [],
-        "destinationPorts": ["80", "443"]
-      }
-    ],
-    "name": "AAD_NW",
-    "priority": 250
-  },
-  {
-    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
-    "action": {
-      "type": "Allow"
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "MS_Graph",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["graph.windows.net"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "manage_azure_com",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["manage.azure.com"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Entra_ID_CDN",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "aadcdn.msauth.net",
+            "aadcdn.msftauth.net",
+            "ajax.aspnetcdn.com",
+            "aadcdn.msauthimages.net"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Entra_ID_Login",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "login.microsoftonline.com",
+            "login.windows.net",
+            "login.microsoft.com"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "rbac_pas_windows.net",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["pas.windows.net"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "Entra_ID_App",
+      "priority": 260
+    }
+  ],
+  "AzureUSGovernment": [
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "NetworkRule",
+          "name": "GuestAndHybridMgt",
+          "ipProtocols": ["TCP"],
+          "sourceAddresses": ["*"],
+          "sourceIpGroups": [],
+          "destinationAddresses": ["GuestAndHybridManagement"],
+          "destinationIpGroups": [],
+          "destinationFqdns": [],
+          "destinationPorts": ["*"]
+        }
+      ],
+      "name": "Intune_NW",
+      "priority": 200
     },
-    "rules": [
-      {
-        "ruleType": "ApplicationRule",
-        "name": "graph_windows_net",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["graph.windows.net"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
       },
-      {
-        "ruleType": "ApplicationRule",
-        "name": "manage_azure_com",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["manage.azure.com"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "WindowsUpdate_tag",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": ["WindowsUpdate"],
+          "webCategories": [],
+          "targetFqdns": [],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "WindowsUpdate",
+      "priority": 500
+    },
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
       },
-      {
-        "ruleType": "ApplicationRule",
-        "name": "AADCDN",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": [
-          "aadcdn.msauth.net",
-          "aadcdn.msftauth.net",
-          "ajax.aspnetcdn.com",
-          "aadcdn.msauthimages.net"
-        ],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "manage_microsoft_us",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["*.manage.microsoft.us", "manage.microsoft.us"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "office_config",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["config.office.com", "*.officeconfig.msocdn.com"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "MS_Graph",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["graph.windows.us"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "enterprise_reg",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["enterpriseregistration.microsoftonline.us"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Scripts_Win32_Apps",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "sovereignprodimedatapri.azureedge.net",
+            "sovereignprodimedatasec.azureedge.net",
+            "sovereignprodimedatahotfix.azureedge.net"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "Intune_App",
+      "priority": 300
+    },
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
       },
-      {
-        "ruleType": "ApplicationRule",
-        "name": "login_microsoftonline_com",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": [
-          "login.microsoftonline.com",
-          "login.windows.net",
-          "login.microsoft.com"
-        ],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
+      "rules": [
+        {
+          "ruleType": "NetworkRule",
+          "name": "EntraID_Tag",
+          "ipProtocols": ["TCP"],
+          "sourceAddresses": ["*"],
+          "sourceIpGroups": [],
+          "destinationAddresses": ["AzureActiveDirectory"],
+          "destinationIpGroups": [],
+          "destinationFqdns": [],
+          "destinationPorts": ["80", "443"]
+        },
+        {
+          "ruleType": "NetworkRule",
+          "name": "Entra_ID_metadata",
+          "ipProtocols": ["TCP"],
+          "sourceAddresses": ["*"],
+          "sourceIpGroups": [],
+          "destinationAddresses": ["169.254.169.254"],
+          "destinationIpGroups": [],
+          "destinationFqdns": [],
+          "destinationPorts": ["80", "443"]
+        }
+      ],
+      "name": "Entra_ID_NW",
+      "priority": 250
+    },
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
       },
-      {
-        "ruleType": "ApplicationRule",
-        "name": "rbac_pas_windows.net",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["pas.windows.net"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
-      }
-    ],
-    "name": "AAD",
-    "priority": 260
-  }
-]
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "MS_Graph",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "graph.windows.us",
+            "graph.microsoft.us",
+            "graph.microsoftazure.us"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "manage_azure_com",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["manage.azure.com"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Entra_ID_CDN",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "aadcdn.msftauth.net",
+            "aadcdn.msftauthimages.us",
+            "*.msauth.net"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Entra_ID_Login",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["login.microsoftonline.us", "autologon.microsoft.us"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "rbac_pas_windows.net",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["pas.windows.net"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "Entra_ID",
+      "priority": 260
+    }
+  ]
+}

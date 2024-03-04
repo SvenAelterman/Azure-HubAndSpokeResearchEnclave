@@ -1,115 +1,240 @@
-[
-  {
-    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
-    "action": {
-      "type": "Allow"
-    },
-    "rules": [
-      {
-        "ruleType": "ApplicationRule",
-        "name": "Azure_Portal",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": [
-          "*.portal.azure.com",
-          "*.portal.azure.net",
-          "portal.azure.com",
-          "portal.azure.net"
-        ],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
+{
+  "AzureCloud": [
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
       },
-      {
-        "ruleType": "ApplicationRule",
-        "name": "Azure_ARM_API",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["management.azure.com"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
-      },
-      {
-        "ruleType": "ApplicationRule",
-        "name": "Billing",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["service.bmx.azure.com"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
-      }
-    ],
-    "name": "AzurePortal",
-    "priority": 1000
-  },
-  {
-    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
-    "action": {
-      "type": "Allow"
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Azure_Portal",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "*.portal.azure.com",
+            "*.portal.azure.net",
+            "portal.azure.com",
+            "portal.azure.net",
+            "catalogartifact.azureedge.net",
+            "afd-v2.hosting.portal.azure.net"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Azure_ARM_API",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["management.azure.com"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Billing",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["service.bmx.azure.com"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "AzurePortal",
+      "priority": 1000
     },
-    "rules": [
-      {
-        "ruleType": "ApplicationRule",
-        "name": "Monitor_Core",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "fqdnTags": [],
-        "webCategories": [],
-        "targetFqdns": ["*.monitor.core.windows.net"],
-        "targetUrls": [],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
-      }
-    ],
-    "name": "Monitor",
-    "priority": 500
-  }
-]
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Monitor",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "*.monitor.core.windows.net",
+            "portal.loganalytics.io",
+            "api.loganalytics.io"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "Monitor",
+      "priority": 500
+    }
+  ],
+  "AzureUSGovernment": [
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Azure_Portal",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": [
+            "*.portal.azure.us",
+            "portal.azure.us",
+            "ext.core.security.azure.us",
+            "hosting.azureportal.usgovcloudapi.net",
+            "reactblade.azureportal.usgovcloudapi.net",
+            "iam.hosting.azureportal.usgovcloudapi.net"
+          ],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Azure_ARM_API",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["management.usgovcloudapi.net"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        },
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Billing",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["service.bmx.azure.com"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "AzurePortal",
+      "priority": 1000
+    },
+    {
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "Monitor",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "fqdnTags": [],
+          "webCategories": [],
+          "targetFqdns": ["api.loganalytics.us", "portal.loganalytics.us"],
+          "targetUrls": [],
+          "terminateTLS": false,
+          "sourceAddresses": ["*"],
+          "destinationAddresses": [],
+          "sourceIpGroups": []
+        }
+      ],
+      "name": "Monitor",
+      "priority": 500
+    }
+  ]
+}

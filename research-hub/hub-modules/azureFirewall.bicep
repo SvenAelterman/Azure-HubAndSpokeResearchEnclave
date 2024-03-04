@@ -45,7 +45,7 @@ var defaultRuleCollectionGroups = {
     priority: 500
   }
   AzurePlatform: {
-    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-AzurePlatform.jsonc')
+    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-AzurePlatform.jsonc')[az.environment().name]
     priority: 1000
   }
   AVDRDWeb: {
@@ -53,11 +53,11 @@ var defaultRuleCollectionGroups = {
     priority: 100
   }
   ManagedDevices: {
-    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-ManagedDevices.jsonc')
+    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-ManagedDevices.jsonc')[az.environment().name]
     priority: 300
   }
   Office365Activation: {
-    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-Office365Activation.jsonc')
+    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-Office365Activation.jsonc')[az.environment().name]
     priority: 700
   }
   ResearchDataSources: {
