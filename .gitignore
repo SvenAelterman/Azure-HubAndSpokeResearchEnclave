@@ -7,5 +7,6 @@
 
 !main.sample*.bicepparam
 
-# Compiled Bicep
+# Compiled Bicep, compiled Bicepparam
 main.json
+main.*.json
