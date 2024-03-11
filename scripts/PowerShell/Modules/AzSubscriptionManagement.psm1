@@ -74,7 +74,7 @@ Function Register-AzProviderFeatureWrapper {
     # If the feature is not registered yet
     if ($Feature.RegistrationState -ne 'Registered') {
         Write-Warning "About to register feature '$($Feature.ProviderName)::$($Feature.FeatureName)' in subscription '$($AzContext.Subscription.Name)'. Expect a (up to 15 minute) delay while the feature registration is completed."
-        $Status = Register-AzProviderFeature -FeatureName "EncryptionAtHost" -ProviderNamespace "Microsoft.Compute"
+        $Status = Register-AzProviderFeature -FeatureName $FeatureName -ProviderNamespace $ProviderNamespace
 
         if ($Status.RegistrationState -eq 'Registering') {
             [double]$PercentComplete = 1
@@ -82,7 +82,7 @@ Function Register-AzProviderFeatureWrapper {
 
             while ($Status.RegistrationState -eq 'Registering') {
                 Start-Sleep -Seconds 30
-                $Status = Get-AzProviderFeature -FeatureName "EncryptionAtHost" -ProviderNamespace "Microsoft.Compute"
+                $Status = Get-AzProviderFeature -FeatureName $FeatureName -ProviderNamespace $ProviderNamespace
                 # Assuming 20 minutes (max); so each 30 seconds is 2.5% complete
                 $PercentComplete += 2.5
                 Write-Progress -Activity "Registering feature '$($Status.ProviderName)::$($Status.FeatureName)'" -Id 0 -PercentComplete $PercentComplete -SecondsRemaining -1
