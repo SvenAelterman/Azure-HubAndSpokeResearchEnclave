@@ -8,6 +8,7 @@ param remoteAppApplicationGroupInfo array = []
 @description('Entra ID object ID of the user or group to be assigned to the Desktop Virtualization User (dvu) role.')
 param userObjectId string
 
+@description('Entra ID object ID of the user or group to be assigned to the Virtual Machine Administrator Login (vmal) role, if using Entra ID join.')
 param adminObjectId string
 
 @description('RBAC role definitions.')
@@ -15,18 +16,21 @@ param roles object
 
 param usePrivateLinkForHostPool bool = true
 param privateEndpointSubnetId string
+@description('The Azure resource ID of the private DNS zone for privatelink.wvd.microsoft.com.')
 param privateLinkDnsZoneId string
 
 param deploymentNameStructure string
 param deploymentTime string = utcNow()
 
 // TODO: Using logonType param, set up Virtual Machine User Login role for objectId
-@allowed([ 'ad', 'entraID' ])
+@allowed(['ad', 'entraID'])
 param logonType string
 
 // Provide common default RDP properties for research workloads
 var defaultRdpProperties = 'drivestoredirect:s:0;audiomode:i:0;videoplaybackmode:i:1;redirectclipboard:i:0;redirectprinters:i:0;devicestoredirect:s:0;redirectcomports:i:0;redirectsmartcards:i:1;usbdevicestoredirect:s:0;enablecredsspsupport:i:1;use multimon:i:1;'
-var entraIDJoinCustomRdpProperties = (logonType == 'entraID') ? 'targetisaadjoined:i:1;enablerdsaadauth:i:1;redirectwebauthn:i:1;' : ''
+var entraIDJoinCustomRdpProperties = (logonType == 'entraID')
+  ? 'targetisaadjoined:i:1;enablerdsaadauth:i:1;redirectwebauthn:i:1;'
+  : ''
 var customRdpProperty = '${defaultRdpProperties}${entraIDJoinCustomRdpProperties}'
 
 resource hostPool 'Microsoft.DesktopVirtualization/hostPools@2020-11-10-preview' = {
@@ -60,22 +64,24 @@ resource desktopApplicationGroup 'Microsoft.DesktopVirtualization/applicationGro
 }
 
 // Create a role assignment for the user or group to be assigned to the Virtual Machine User Login (vmul) role, if using Entra ID join
-resource rgRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (logonType == 'entraID') {
-  name: guid(resourceGroup().id, userObjectId, roles.VirtualMachineUserLogin)
-  properties: {
-    roleDefinitionId: roles.VirtualMachineUserLogin
-    principalId: userObjectId
+resource rgRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
+  if (logonType == 'entraID') {
+    name: guid(resourceGroup().id, userObjectId, roles.VirtualMachineUserLogin)
+    properties: {
+      roleDefinitionId: roles.VirtualMachineUserLogin
+      principalId: userObjectId
+    }
   }
-}
 
 // Create a role assignment for the admins to be assigned to the Virtual Machine Administrator Login (vmal) role, if using Entra ID join
-resource rgAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = if (logonType == 'entraID') {
-  name: guid(resourceGroup().id, adminObjectId, roles.VirtualMachineAdministratorLogin)
-  properties: {
-    roleDefinitionId: roles.VirtualMachineAdministratorLogin
-    principalId: adminObjectId
+resource rgAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
+  if (logonType == 'entraID') {
+    name: guid(resourceGroup().id, adminObjectId, roles.VirtualMachineAdministratorLogin)
+    properties: {
+      roleDefinitionId: roles.VirtualMachineAdministratorLogin
+      principalId: adminObjectId
+    }
   }
-}
 
 // LATER: Execute deployment script for Update-AzWvdDesktop -ResourceGroupName rg-wcmprj-avd-demo-eastus-02 -ApplicationGroupName ag-wcmprj-avd-demo-eastus-02 -Name SessionDesktop -FriendlyName Test
 
@@ -88,23 +94,27 @@ resource dagRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' 
   }
 }
 
-module remoteAppApplicationGroupsModule 'remoteAppApplicationGroup.bicep' = [for appGroup in remoteAppApplicationGroupInfo: {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'rag-${appGroup.name}'), 64)
-  params: {
-    name: replace(namingStructure, '{rtype}', appGroup.name)
-    location: location
-    tags: tags
-    applications: appGroup.applications
-    friendlyName: appGroup.friendlyName
-    hostPoolId: hostPool.id
+module remoteAppApplicationGroupsModule 'remoteAppApplicationGroup.bicep' = [
+  for appGroup in remoteAppApplicationGroupInfo: {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'rag-${appGroup.name}'), 64)
+    params: {
+      name: replace(namingStructure, '{rtype}', appGroup.name)
+      location: location
+      tags: tags
+      applications: appGroup.applications
+      friendlyName: appGroup.friendlyName
+      hostPoolId: hostPool.id
 
-    principalId: userObjectId
-    roleDefinitionId: roles.DesktopVirtualizationUser
+      principalId: userObjectId
+      roleDefinitionId: roles.DesktopVirtualizationUser
+    }
   }
-}]
+]
 
-var desktopApplicationGroupId = [ desktopApplicationGroup.id ]
-var expectedRemoteAppApplicationGroupIds = [for appGroup in remoteAppApplicationGroupInfo: '${resourceGroup().id}/providers/Microsoft.DesktopVirtualization/applicationgroups/${replace(namingStructure, '{rtype}', appGroup.name)}']
+var desktopApplicationGroupId = [desktopApplicationGroup.id]
+var expectedRemoteAppApplicationGroupIds = [
+  for appGroup in remoteAppApplicationGroupInfo: '${resourceGroup().id}/providers/Microsoft.DesktopVirtualization/applicationgroups/${replace(namingStructure, '{rtype}', appGroup.name)}'
+]
 var allApplicationGroupIds = concat(desktopApplicationGroupId, expectedRemoteAppApplicationGroupIds)
 
 // Create a Azure Virtual Desktop workspace and assign all application groups to it
@@ -122,42 +132,44 @@ resource workspace 'Microsoft.DesktopVirtualization/workspaces@2022-09-09' = {
   tags: tags
 }
 
-resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' = if (usePrivateLinkForHostPool) {
-  name: replace(namingStructure, '{rtype}', 'hp-pep')
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: privateEndpointSubnetId
+resource privateEndpoint 'Microsoft.Network/privateEndpoints@2023-04-01' =
+  if (usePrivateLinkForHostPool) {
+    name: replace(namingStructure, '{rtype}', 'hp-pep')
+    location: location
+    tags: tags
+    properties: {
+      subnet: {
+        id: privateEndpointSubnetId
+      }
+      privateLinkServiceConnections: [
+        {
+          name: replace(namingStructure, '{rtype}', 'hp-pep')
+          properties: {
+            privateLinkServiceId: hostPool.id
+            groupIds: [
+              'connection'
+            ]
+          }
+        }
+      ]
     }
-    privateLinkServiceConnections: [
-      {
-        name: replace(namingStructure, '{rtype}', 'hp-pep')
-        properties: {
-          privateLinkServiceId: hostPool.id
-          groupIds: [
-            'connection'
-          ]
-        }
-      }
-    ]
   }
-}
 
-resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-04-01' = if (usePrivateLinkForHostPool) {
-  name: 'default'
-  parent: privateEndpoint
-  properties: {
-    privateDnsZoneConfigs: [
-      {
-        name: replace('privatelink.wvd.microsoft.com', '.', '-')
-        properties: {
-          privateDnsZoneId: privateLinkDnsZoneId
+resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2023-04-01' =
+  if (usePrivateLinkForHostPool) {
+    name: 'default'
+    parent: privateEndpoint
+    properties: {
+      privateDnsZoneConfigs: [
+        {
+          name: replace('privatelink.wvd.microsoft.com', '.', '-')
+          properties: {
+            privateDnsZoneId: privateLinkDnsZoneId
+          }
         }
-      }
-    ]
+      ]
+    }
   }
-}
 
 output hostPoolRegistrationToken string = hostPool.properties.registrationInfo.token
 output hostPoolName string = hostPool.name
