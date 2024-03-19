@@ -17,9 +17,11 @@ resource diskEncryptionSet 'Microsoft.Compute/diskEncryptionSets@2023-04-02' = {
   location: location
   identity: {
     type: useSystemAssignedManagedIdentityOnly ? 'SystemAssigned' : 'SystemAssigned, UserAssigned'
-    userAssignedIdentities: useSystemAssignedManagedIdentityOnly ? null : {
-      '${uamiId}': {}
-    }
+    userAssignedIdentities: useSystemAssignedManagedIdentityOnly
+      ? null
+      : {
+          '${uamiId}': {}
+        }
   }
   properties: {
     activeKey: {
@@ -46,14 +48,15 @@ resource kvRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
 }
 
 // Grant a role to the Disk Encryption Set on the Key Vault if using system-assigned identity
-module kvRbacModule '../../../module-library/roleAssignments/roleAssignment-kv.bicep' = if (useSystemAssignedManagedIdentityOnly) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'kv-des-rbac'), 64)
-  scope: kvRg
-  params: {
-    kvName: keyVaultName
-    principalId: diskEncryptionSet.identity.principalId
-    roleDefinitionId: kvRoleDefinitionId
+module kvRbacModule '../../module-library/roleAssignments/roleAssignment-kv.bicep' =
+  if (useSystemAssignedManagedIdentityOnly) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'kv-des-rbac'), 64)
+    scope: kvRg
+    params: {
+      kvName: keyVaultName
+      principalId: diskEncryptionSet.identity.principalId
+      roleDefinitionId: kvRoleDefinitionId
+    }
   }
-}
 
 output id string = diskEncryptionSet.id

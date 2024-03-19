@@ -40,33 +40,38 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' = {
       defaultAction: 'Deny'
       bypass: 'AzureServices'
       virtualNetworkRules: []
-      ipRules: [for ip in allowedIps: {
-        value: ip
-      }]
+      ipRules: [
+        for ip in allowedIps: {
+          value: ip
+        }
+      ]
     }
   }
   tags: tags
 }
 
-resource keyVaultLock 'Microsoft.Authorization/locks@2020-05-01' = if (applyDeleteLock) {
-  scope: keyVault
-  name: replace(namingStructure, '{rtype}', 'kv-lock')
-  properties: {
-    level: 'CanNotDelete'
-    notes: 'Deleting this Key Vault will delete the encryption keys used for storage accounts and managed disks in this spoke. Deleting encryption keys will make this resources inaccessible.'
+resource keyVaultLock 'Microsoft.Authorization/locks@2020-05-01' =
+  if (applyDeleteLock) {
+    scope: keyVault
+    name: replace(namingStructure, '{rtype}', 'kv-lock')
+    properties: {
+      level: 'CanNotDelete'
+      notes: 'Deleting this Key Vault will delete the encryption keys used for storage accounts and managed disks in this spoke. Deleting encryption keys will make this resources inaccessible.'
+    }
   }
-}
 
-module keyVaultAdminRbac '../../../module-library/roleAssignments/roleAssignment-kv.bicep' = [for (admin, i) in keyVaultAdmins: {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'kv-rbac-${i}'), 64)
-  params: {
-    kvName: keyVault.name
-    principalId: admin
-    roleDefinitionId: roles.KeyVaultAdministrator
+module keyVaultAdminRbac '../../module-library/roleAssignments/roleAssignment-kv.bicep' = [
+  for (admin, i) in keyVaultAdmins: {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'kv-rbac-${i}'), 64)
+    params: {
+      kvName: keyVault.name
+      principalId: admin
+      roleDefinitionId: roles.KeyVaultAdministrator
+    }
   }
-}]
+]
 
-// LATER: Private Endpoint
+// LATER: Create Private Endpoint
 
 output keyVaultName string = keyVault.name
 output id string = keyVault.id

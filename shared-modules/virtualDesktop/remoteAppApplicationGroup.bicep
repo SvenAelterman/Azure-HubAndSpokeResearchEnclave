@@ -8,7 +8,29 @@ param tags object
 param principalId string
 param roleDefinitionId string
 
-resource applicationGroup 'Microsoft.DesktopVirtualization/applicationGroups@2022-09-09' = {
+/*
+ * TYPES
+ */
+
+@export()
+type application = {
+  name: string
+  applicationType: 'InBuilt' | 'MsixApplication'
+  filePath: string
+  friendlyName: string
+  @minValue(0)
+  iconIndex: int
+  iconPath: string
+  showInPortal: bool?
+  commandLineSetting: 'Allow' | 'DoNotAllow' | 'Require'
+  commandLineArguments: string?
+}
+
+/*
+ * RESOURCES
+ */
+
+resource applicationGroup 'Microsoft.DesktopVirtualization/applicationGroups@2023-09-05' = {
   name: name
   location: location
   properties: {
@@ -19,30 +41,38 @@ resource applicationGroup 'Microsoft.DesktopVirtualization/applicationGroups@202
   tags: tags
 }
 
-resource remoteApplications 'Microsoft.DesktopVirtualization/applicationGroups/applications@2022-10-14-preview' = [for app in applications: {
-  name: app.name
-  parent: applicationGroup
-  properties: {
-    commandLineSetting: contains(app, 'commandLineSetting') && !empty(app.commandLineSetting) ? app.commandLineSetting : 'Allow'
-    commandLineArguments: contains(app, 'commandLineArguments') && !empty(app.commandLineArguments) ? app.CommandLineArguments : ''
+resource remoteApplications 'Microsoft.DesktopVirtualization/applicationGroups/applications@2023-09-05' = [
+  for app in applications: {
+    name: app.name
+    parent: applicationGroup
+    properties: {
+      commandLineSetting: contains(app, 'commandLineSetting') && !empty(app.commandLineSetting)
+        ? app.commandLineSetting
+        : 'Allow'
+      commandLineArguments: contains(app, 'commandLineArguments') && !empty(app.commandLineArguments)
+        ? app.CommandLineArguments
+        : ''
 
-    applicationType: app.applicationType
-    filePath: app.filePath
-    friendlyName: app.friendlyName
-    iconIndex: app.iconIndex
-    iconPath: app.iconPath
-    showInPortal: app.showInPortal
+      applicationType: app.applicationType
+      filePath: app.filePath
+      friendlyName: app.friendlyName
+      iconIndex: app.iconIndex
+      iconPath: app.iconPath
+      showInPortal: app.showInPortal
+    }
   }
-}]
+]
 
-resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(applicationGroup.id, principalId, roleDefinitionId)
-  scope: applicationGroup
-  properties: {
-    roleDefinitionId: roleDefinitionId
-    principalId: principalId
+// Assign the specified role to the specified principal
+resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
+  if (!empty(principalId) && !empty(roleDefinitionId)) {
+    name: guid(applicationGroup.id, principalId, roleDefinitionId)
+    scope: applicationGroup
+    properties: {
+      roleDefinitionId: roleDefinitionId
+      principalId: principalId
+    }
   }
-}
 
 output id string = applicationGroup.id
 output name string = applicationGroup.name

@@ -3,16 +3,16 @@ param location string = resourceGroup().location
 param tags object
 param desktopAppGroupFriendlyName string
 param workspaceFriendlyName string
-param remoteAppApplicationGroupInfo array = []
+param remoteAppApplicationGroupInfo remoteAppApplicationGroup[] = []
 
 @description('Entra ID object ID of the user or group to be assigned to the Desktop Virtualization User (dvu) role.')
-param userObjectId string
+param userObjectId string = ''
 
 @description('Entra ID object ID of the user or group to be assigned to the Virtual Machine Administrator Login (vmal) role, if using Entra ID join.')
 param adminObjectId string
 
-@description('RBAC role definitions.')
-param roles object
+@description('RBAC role definitions. Must contain the following roles: DesktopVirtualizationUser, VirtualMachineUserLogin, VirtualMachineAdministratorLogin.')
+param roles roleDefinitions
 
 param usePrivateLinkForHostPool bool = true
 param privateEndpointSubnetId string
@@ -22,9 +22,40 @@ param privateLinkDnsZoneId string
 param deploymentNameStructure string
 param deploymentTime string = utcNow()
 
+param deployDesktopAppGroup bool = true
+
 // TODO: Using logonType param, set up Virtual Machine User Login role for objectId
 @allowed(['ad', 'entraID'])
 param logonType string
+
+/*
+ * TYPES
+ */
+
+@export()
+type remoteAppApplicationGroup = {
+  @description('The name of the Remote Application Group.')
+  name: string
+  @description('The applications included in the group.')
+  applications: application[]
+  @description('The friendly (display) name of the group.')
+  friendlyName: string
+}
+
+@export()
+type roleDefinitions = {
+  DesktopVirtualizationUser: string
+  VirtualMachineUserLogin: string
+  VirtualMachineAdministratorLogin: string
+
+  *: string
+}
+
+import { application } from './remoteAppApplicationGroup.bicep'
+
+/*
+ * VARIABLES
+ */
 
 // Provide common default RDP properties for research workloads
 var defaultRdpProperties = 'drivestoredirect:s:0;audiomode:i:0;videoplaybackmode:i:1;redirectclipboard:i:0;redirectprinters:i:0;devicestoredirect:s:0;redirectcomports:i:0;redirectsmartcards:i:1;usbdevicestoredirect:s:0;enablecredsspsupport:i:1;use multimon:i:1;'
@@ -51,21 +82,22 @@ resource hostPool 'Microsoft.DesktopVirtualization/hostPools@2020-11-10-preview'
   tags: tags
 }
 
-resource desktopApplicationGroup 'Microsoft.DesktopVirtualization/applicationGroups@2022-09-09' = {
-  name: replace(namingStructure, '{rtype}', 'dag')
-  location: location
-  properties: {
-    applicationGroupType: 'Desktop'
-    hostPoolArmPath: hostPool.id
-    // This isn't actually displayed anywhere; just set here for possible future use
-    friendlyName: desktopAppGroupFriendlyName
+resource desktopApplicationGroup 'Microsoft.DesktopVirtualization/applicationGroups@2023-09-05' =
+  if (deployDesktopAppGroup) {
+    name: replace(namingStructure, '{rtype}', 'dag')
+    location: location
+    properties: {
+      applicationGroupType: 'Desktop'
+      hostPoolArmPath: hostPool.id
+      // This isn't actually displayed anywhere; just set here for possible future use
+      friendlyName: desktopAppGroupFriendlyName
+    }
+    tags: tags
   }
-  tags: tags
-}
 
 // Create a role assignment for the user or group to be assigned to the Virtual Machine User Login (vmul) role, if using Entra ID join
 resource rgRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
-  if (logonType == 'entraID') {
+  if (logonType == 'entraID' && !empty(userObjectId)) {
     name: guid(resourceGroup().id, userObjectId, roles.VirtualMachineUserLogin)
     properties: {
       roleDefinitionId: roles.VirtualMachineUserLogin
@@ -83,16 +115,17 @@ resource rgAdminRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
     }
   }
 
-// LATER: Execute deployment script for Update-AzWvdDesktop -ResourceGroupName rg-wcmprj-avd-demo-eastus-02 -ApplicationGroupName ag-wcmprj-avd-demo-eastus-02 -Name SessionDesktop -FriendlyName Test
+// LATER: Execute deployment script for Update-AzWvdDesktop -ResourceGroupName resourceGroup().name -ApplicationGroupName desktopApplicationGroup.name -Name SessionDesktop -FriendlyName desktopAppGroupFriendlyName
 
-resource dagRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(desktopApplicationGroup.id, userObjectId, roles.DesktopVirtualizationUser)
-  scope: desktopApplicationGroup
-  properties: {
-    roleDefinitionId: roles.DesktopVirtualizationUser
-    principalId: userObjectId
+resource dagRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' =
+  if (deployDesktopAppGroup && !empty(userObjectId)) {
+    name: guid(desktopApplicationGroup.id, userObjectId, roles.DesktopVirtualizationUser)
+    scope: desktopApplicationGroup
+    properties: {
+      roleDefinitionId: roles.DesktopVirtualizationUser
+      principalId: userObjectId
+    }
   }
-}
 
 module remoteAppApplicationGroupsModule 'remoteAppApplicationGroup.bicep' = [
   for appGroup in remoteAppApplicationGroupInfo: {
@@ -111,14 +144,14 @@ module remoteAppApplicationGroupsModule 'remoteAppApplicationGroup.bicep' = [
   }
 ]
 
-var desktopApplicationGroupId = [desktopApplicationGroup.id]
+var desktopApplicationGroupId = deployDesktopAppGroup ? [desktopApplicationGroup.id] : []
 var expectedRemoteAppApplicationGroupIds = [
   for appGroup in remoteAppApplicationGroupInfo: '${resourceGroup().id}/providers/Microsoft.DesktopVirtualization/applicationgroups/${replace(namingStructure, '{rtype}', appGroup.name)}'
 ]
 var allApplicationGroupIds = concat(desktopApplicationGroupId, expectedRemoteAppApplicationGroupIds)
 
 // Create a Azure Virtual Desktop workspace and assign all application groups to it
-resource workspace 'Microsoft.DesktopVirtualization/workspaces@2022-09-09' = {
+resource workspace 'Microsoft.DesktopVirtualization/workspaces@2023-09-05' = {
   name: replace(namingStructure, '{rtype}', 'ws')
   location: location
   properties: {
@@ -126,9 +159,7 @@ resource workspace 'Microsoft.DesktopVirtualization/workspaces@2022-09-09' = {
     friendlyName: workspaceFriendlyName
   }
   // Dependency must be explicit because the allApplicationGroupIds array isn't created from the application groups module
-  dependsOn: [
-    remoteAppApplicationGroupsModule
-  ]
+  dependsOn: [remoteAppApplicationGroupsModule]
   tags: tags
 }
 

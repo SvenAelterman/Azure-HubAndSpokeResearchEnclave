@@ -1,5 +1,7 @@
 targetScope = 'subscription'
 
+//------------------------------ START PARAMETERS ------------------------------
+
 @description('The Azure region where the spoke will be deployed.')
 @allowed([
   'usgovvirginia'
@@ -50,9 +52,9 @@ param additionalSubnets array = []
 
 // AVD parameters
 @description('Name of the Desktop application group shown to users in the AVD client.')
-param desktopAppGroupFriendlyName string
+param desktopAppGroupFriendlyName string = 'N/A'
 @description('Name of the Workspace shown to users in the AVD client.')
-param workspaceFriendlyName string
+param workspaceFriendlyName string = 'N/A'
 // @description('The list of remote application groups and applications in each group to create. See sample parameters file for the syntax.')
 // param remoteAppApplicationGroupInfo array
 
@@ -70,11 +72,11 @@ param sessionHostLocalAdminPassword string
   'entraID'
 ])
 param logonType string
-@secure()
 @description('The username of a domain user or service account to use to join the Active Directory domain. Required if using AD join.')
-param domainJoinUsername string = ''
 @secure()
+param domainJoinUsername string = ''
 @description('The password of the domain user or service account to use to join the Active Directory domain. Required if using AD join.')
+@secure()
 param domainJoinPassword string = ''
 
 @description('The fully qualified DNS name of the Active Directory domain to join. Required if using AD join.')
@@ -85,9 +87,9 @@ param adOuPath string = ''
 param sessionHostCount int = 1
 @description('The prefix used for the computer names of the session host(s). Maximum 11 characters.')
 @maxLength(11)
-param sessionHostNamePrefix string
+param sessionHostNamePrefix string = 'N/A'
 @description('A valid Azure Virtual Machine size. Use `az vm list-sizes --location "<region>"` to retrieve a list for the selected location')
-param sessionHostSize string
+param sessionHostSize string = 'N/A'
 @description('If true, will configure the deployment of AVD to make the AVD session hosts usable as research VMs. This will give full desktop access, flow the AVD traffic through the firewall, etc.')
 param useSessionHostAsResearchVm bool = true
 
@@ -127,32 +129,17 @@ param debugMode bool = false
 param debugRemoteIp string = ''
 param debugPrincipalId string = ''
 
-// Variables
+//----------------------------- END PARAMETERS -----------------------------
+
+//----------------------------- START VARIABLES ----------------------------
+
 var sequenceFormatted = format('{0:00}', sequence)
 // TODO: Use like hub
 var defaultTags = {
   ID: '${workloadName}_${sequence}'
 }
 
-var complianceFeatureMap = {
-  NIST80053R5: {
-    usePrivateEndpoints: true
-    useCMK: true
-  }
-  NIST800171R2: {
-    usePrivateEndpoints: true
-    useCMK: true
-  }
-  HIPAAHITRUST: {
-    usePrivateEndpoints: false
-    useCMK: false
-  }
-  // TODO: Verify these
-  CMMC2L2: {
-    usePrivateEndpoints: true
-    useCMK: false
-  }
-}
+var complianceFeatureMap = loadJsonContent('../shared-modules/compliance/complianceFeatureMap.jsonc')
 
 // Use private endpoints when targeting NIST 800-53 R5 or CMMC 2.0 Level 2
 var usePrivateEndpoints = bool(complianceFeatureMap[complianceTarget].usePrivateEndpoints)
@@ -194,6 +181,8 @@ var fileShareNames = {
   // Created in airlock review storage account if not centralized review
   exportReview: 'export-review'
 }
+
+//------------------------------ END VARIABLES ------------------------------
 
 // Load RBAC roles
 module rolesModule '../module-library/roles.bicep' = {
@@ -315,7 +304,7 @@ module keyVaultNameModule '../module-library/createValidAzResourceName.bicep' = 
 }
 
 // Create a Key Vault for the customer-managed keys and more
-module keyVaultModule './spoke-modules/security/keyVault.bicep' = {
+module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'kv'), 64)
   scope: securityRg
   params: {
@@ -340,7 +329,7 @@ module keyVaultModule './spoke-modules/security/keyVault.bicep' = {
 }
 
 // Create encryption keys in the Key Vault for data factory, storage accounts, disks, and recovery services vault
-module encryptionKeysModule './spoke-modules/security/encryptionKeys.bicep' =
+module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' =
   if (useCMK) {
     name: take(replace(deploymentNameStructure, '{rtype}', 'keys'), 64)
     scope: securityRg
@@ -353,7 +342,7 @@ module encryptionKeysModule './spoke-modules/security/encryptionKeys.bicep' =
 
 var kvEncryptionKeys = reduce(encryptionKeysModule.outputs.keys, {}, (cur, next) => union(cur, next))
 
-module uamiModule './spoke-modules/security/uami.bicep' = {
+module uamiModule '../shared-modules/security/uami.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'uami'), 64)
   scope: securityRg
   params: {
@@ -374,12 +363,13 @@ module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bic
 }
 
 // Create the disk encryption set with system-assigned MI and grant access to Key Vault
-module diskEncryptionSetModule './spoke-modules/security/diskEncryptionSet.bicep' =
+module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bicep' =
   if (useCMK) {
     name: take(replace(deploymentNameStructure, '{rtype}', 'des'), 64)
     scope: securityRg
     params: {
       keyVaultId: keyVaultModule.outputs.id
+      // TODO: Validate WithVersion is needed
       keyUrl: kvEncryptionKeys.diskEncryptionSet.keyUriWithVersion
       uamiId: uamiModule.outputs.id
       location: location
