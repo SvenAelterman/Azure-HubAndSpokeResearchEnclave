@@ -191,17 +191,16 @@ var requiredSubnets = {
     routes: []
     securityRules: []
     delegation: ''
-    // TODO: Update when redeploying entirely, make it smaller
-    order: 5
-    subnetCidr: 24
+    order: 4
+    subnetCidr: 27
   }
   AzureFirewallSubnet: {
     serviceEndpoints: []
     routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
     //securityRules: [] Azure Firewall does not support NSGs on its subnets
     delegation: ''
-    order: 4
-    subnetCidr: 24
+    order: 0
+    subnetCidr: 26
   }
   // TODO: The need for this subnet depends on the Firewall SKU and forced tunneling
   AzureFirewallManagementSubnet: {
@@ -209,15 +208,15 @@ var requiredSubnets = {
     routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
     //securityRules: [] Azure Firewall does not support NSGs on its subnets
     delegation: ''
-    order: 3
-    subnetCidr: 24
+    order: 1
+    subnetCidr: 26
   }
   AirlockSubnet: {
     serviceEndpoints: []
     routes: [] // Routes through the firewall will be added later
     securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
     delegation: ''
-    order: 3 // The fourth /27-sized subnet
+    order: 5 // The fourth /27-sized subnet
     subnetCidr: 27 // There will never be many airlock review virtual machines taking up addresses
   }
 }
@@ -229,7 +228,7 @@ var AzureBastionSubnet = deployBastion
         //routes: [] Bastion doesn't support routes
         securityRules: loadJsonContent('./hub-modules/networking/securityRules/bastion.jsonc')
         delegation: ''
-        order: 0 // The first /26, in the first /24 block
+        order: 3 // The first /26, in the first /24 block
         subnetCidr: 26 // Minimum for AzureBastionSubnet
       }
     }
@@ -241,7 +240,7 @@ var GatewaySubnet = deployVpn
         routes: []
         // securityRules: [] GatewaySubnet does not support NSGs
         delegation: ''
-        order: 2 // There will already be a /26 for Bastion if enabled, so this becomes the third /27
+        order: 8 // There will already be a /26 for Bastion if enabled, so this becomes the third /27
         subnetCidr: 27 // Minimum recommended for GatewaySubnet
       }
     }
@@ -254,8 +253,8 @@ var AvdSubnet = !researchVmsAreSessionHosts
         routes: [] // Routes through the firewall will be added later, but we create the route table here
         securityRules: []
         delegation: ''
-        order: 2 // The third /24
-        subnetCidr: 24
+        order: 9 // The third /24
+        subnetCidr: 27
       }
     }
   : {}
