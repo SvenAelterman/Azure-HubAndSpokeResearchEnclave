@@ -234,14 +234,14 @@ var defaultRoutes = json(replace(loadTextContent('./routes/defaultRouteTable.jso
 
 var subnets = {
   ComputeSubnet: {
-    addressPrefix: cidrSubnet(networkAddressSpaces[0], 25, 0)
+    addressPrefix: cidrSubnet(networkAddressSpaces[0], 26, 0)
     // TODO: When not using research VMs as session hosts, allow RDP and SSH from hub
     // TODO: Allow RDP and SSH from BastionSubnet in hub (if present)
     securityRules: []
     routes: defaultRoutes
   }
   PrivateEndpointSubnet: {
-    addressPrefix: cidrSubnet(networkAddressSpaces[0], 26, 2)
+    addressPrefix: cidrSubnet(networkAddressSpaces[0], 26, 1)
     securityRules: []
     routes: defaultRoutes
   }
