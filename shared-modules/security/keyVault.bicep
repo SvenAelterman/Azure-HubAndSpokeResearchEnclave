@@ -56,7 +56,7 @@ resource keyVaultLock 'Microsoft.Authorization/locks@2020-05-01' =
     name: replace(namingStructure, '{rtype}', 'kv-lock')
     properties: {
       level: 'CanNotDelete'
-      notes: 'Deleting this Key Vault will delete the encryption keys used for storage accounts and managed disks in this spoke. Deleting encryption keys will make this resources inaccessible.'
+      notes: 'Deleting this Key Vault will delete the encryption keys used for storage accounts and managed disks in this spoke. Deleting encryption keys will make these resources inaccessible.'
     }
   }
 
