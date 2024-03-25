@@ -340,7 +340,7 @@ module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' =
     }
   }
 
-var kvEncryptionKeys = reduce(encryptionKeysModule.outputs.keys, {}, (cur, next) => union(cur, next))
+var kvEncryptionKeys = useCMK ? reduce(encryptionKeysModule.outputs.keys, {}, (cur, next) => union(cur, next)) : null
 
 module uamiModule '../shared-modules/security/uami.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'uami'), 64)
