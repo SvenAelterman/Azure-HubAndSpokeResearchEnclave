@@ -56,7 +56,7 @@ param privateEndpointSubnetId string
 param tags object = {}
 param subWorkloadName string = 'airlock'
 
-@allowed([ 'AADDS', 'AADKERB' ])
+@allowed(['AADDS', 'AADKERB'])
 param filesIdentityType string
 
 param debugMode bool = false
@@ -79,7 +79,7 @@ resource spokeKeyVaultRg 'Microsoft.Resources/resourceGroups@2023-07-01' existin
 }
 
 // User Assigned Managed Identity to be used for deployment scripts
-module uamiModule '../security/uami.bicep' = {
+module uamiModule '../../../shared-modules/security/uami.bicep' = {
   name: replace(deploymentNameStructure, '{rtype}', 'uami-al')
   params: {
     location: location
@@ -88,56 +88,58 @@ module uamiModule '../security/uami.bicep' = {
   }
 }
 
-module spokeAirlockStorageAccountModule '../storage/main.bicep' = if (!useCentralizedReview) {
-  name: replace(deploymentNameStructure, '{rtype}', 'st-airlock')
-  params: {
-    location: location
-    namingStructure: namingStructure
-    // No need for any blob containers in this account
-    containerNames: []
-    fileShareNames: [ airlockFileShareName ]
+module spokeAirlockStorageAccountModule '../storage/main.bicep' =
+  if (!useCentralizedReview) {
+    name: replace(deploymentNameStructure, '{rtype}', 'st-airlock')
+    params: {
+      location: location
+      namingStructure: namingStructure
+      // No need for any blob containers in this account
+      containerNames: []
+      fileShareNames: [airlockFileShareName]
 
-    // Create private endpoints on this storage account
-    privateDnsZonesResourceGroupId: privateDnsZonesResourceGroupId
-    privateEndpointSubnetId: privateEndpointSubnetId
-    storageAccountPrivateEndpointGroups: [ 'file' ]
+      // Create private endpoints on this storage account
+      privateDnsZonesResourceGroupId: privateDnsZonesResourceGroupId
+      privateEndpointSubnetId: privateEndpointSubnetId
+      storageAccountPrivateEndpointGroups: ['file']
 
-    deploymentNameStructure: deploymentNameStructure
-    sequence: sequence
-    namingConvention: namingConvention
-    workloadName: workloadName
-    subWorkloadName: subWorkloadName
-    environment: environment
+      deploymentNameStructure: deploymentNameStructure
+      sequence: sequence
+      namingConvention: namingConvention
+      workloadName: workloadName
+      subWorkloadName: subWorkloadName
+      environment: environment
 
-    debugMode: debugMode
-    debugRemoteIp: debugRemoteIp
+      debugMode: debugMode
+      debugRemoteIp: debugRemoteIp
 
-    keyVaultName: keyVaultName
-    keyVaultResourceGroupName: keyVaultResourceGroupName
+      keyVaultName: keyVaultName
+      keyVaultResourceGroupName: keyVaultResourceGroupName
 
-    uamiId: encryptionUamiId
-    storageAccountEncryptionKeyName: storageAccountEncryptionKeyName
+      uamiId: encryptionUamiId
+      storageAccountEncryptionKeyName: storageAccountEncryptionKeyName
 
-    tags: union(tags, { 'hidden-title': 'Airlock Review Storage Account' })
+      tags: union(tags, { 'hidden-title': 'Airlock Review Storage Account' })
 
-    filesIdentityType: filesIdentityType
+      filesIdentityType: filesIdentityType
+    }
   }
-}
 
 /* Call the centralized module to
  * - Assign this UAMI a role to approve the airlock review storage account's private endpoint in the hub
  * - Grant ADF managed identity access to centralized Key Vault to retrieve secrets (#12)
 */
-module centralizedModule 'centralized.bicep' = if (useCentralizedReview) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'airlock-cent'), 64)
-  params: {
-    centralAirlockResources: centralAirlockResources
-    deploymentNameStructure: deploymentNameStructure
-    roles: roles
-    spokeAdfPrincipalId: adfModule.outputs.principalId
-    spokeUamiPrincipalId: uamiModule.outputs.principalId
+module centralizedModule 'centralized.bicep' =
+  if (useCentralizedReview) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'airlock-cent'), 64)
+    params: {
+      centralAirlockResources: centralAirlockResources
+      deploymentNameStructure: deploymentNameStructure
+      roles: roles
+      spokeAdfPrincipalId: adfModule.outputs.principalId
+      spokeUamiPrincipalId: uamiModule.outputs.principalId
+    }
   }
-}
 
 // Assign UAMI a role to approve the project's storage account's private endpoint
 module uamiProjectStorageRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-st.bicep' = {
@@ -186,8 +188,12 @@ module adfPrjKvRoleAssignmentModule '../../../module-library/roleAssignments/rol
   }
 }
 
-var airlockStorageAccountName = useCentralizedReview ? centralizedModule.outputs.centralAirlockStorageAccountName : spokeAirlockStorageAccountModule.outputs.storageAccountName
-var airlocKeyVaultUri = useCentralizedReview ? centralizedModule.outputs.centralKeyVaultUri : keyVault.properties.vaultUri
+var airlockStorageAccountName = useCentralizedReview
+  ? centralizedModule.outputs.centralAirlockStorageAccountName
+  : spokeAirlockStorageAccountModule.outputs.storageAccountName
+var airlocKeyVaultUri = useCentralizedReview
+  ? centralizedModule.outputs.centralKeyVaultUri
+  : keyVault.properties.vaultUri
 
 // Logic app for export review (moves file to airlock review storage account and sends approval email)
 module logicAppModule 'logicApp.bicep' = {
@@ -263,15 +269,17 @@ module publicStorageAccountModule '../storage/storageAccount.bicep' = {
 }
 
 // Grant researchers access to public export-approved and ingest containers
-module publicStContainerRbacModule '../../../module-library/roleAssignments/roleAssignment-st-container.bicep' = [for containerName in publicStorageAccountContainerNames: {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'st-pub-ct-${containerName}-rbac'), 64)
-  params: {
-    containerName: containerName
-    principalId: researcherAadObjectId
-    roleDefinitionId: roles['Storage Blob Data Contributor']
-    storageAccountName: publicStorageAccountModule.outputs.name
+module publicStContainerRbacModule '../../../module-library/roleAssignments/roleAssignment-st-container.bicep' = [
+  for containerName in publicStorageAccountContainerNames: {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'st-pub-ct-${containerName}-rbac'), 64)
+    params: {
+      containerName: containerName
+      principalId: researcherAadObjectId
+      roleDefinitionId: roles['Storage Blob Data Contributor']
+      storageAccountName: publicStorageAccountModule.outputs.name
+    }
   }
-}]
+]
 
 // Grant ADF identity Storage Blob Data Contributor role on public storage account adfModule.outputs.principalId
 module adfPublicStorageAccountRbacModule '../../../module-library/roleAssignments/roleAssignment-st.bicep' = {
@@ -280,7 +288,8 @@ module adfPublicStorageAccountRbacModule '../../../module-library/roleAssignment
     principalId: adfModule.outputs.principalId
     roleDefinitionId: roles['Storage Blob Data Contributor']
     storageAccountName: publicStorageAccountModule.outputs.name
-  } }
+  }
+}
 
 // Setup System Event Grid Topic for public storage account. We only do this here to control the name of the event grid topic
 module eventGridForPublicModule 'eventGrid.bicep' = {
@@ -356,7 +365,9 @@ module airlockManagedPrivateEndpointModule 'adfManagedPrivateEndpoint.bicep' = {
   name: replace(deploymentNameStructure, '{rtype}', 'adf-pep-airlock')
   params: {
     adfName: adfModule.outputs.name
-    storageAccountId: useCentralizedReview ? centralAirlockResources.storageAccountId : spokeAirlockStorageAccountModule.outputs.storageAccountId
+    storageAccountId: useCentralizedReview
+      ? centralAirlockResources.storageAccountId
+      : spokeAirlockStorageAccountModule.outputs.storageAccountId
     storageAccountDisplayName: airlockStorageAccountName
     // The airlock storage account only has a file share
     privateEndpointGroupIDs: [
@@ -367,7 +378,13 @@ module airlockManagedPrivateEndpointModule 'adfManagedPrivateEndpoint.bicep' = {
 
 // We can't approve any endpoints that weren't created by this deployment; this could be a security vulnerability, especially on the airlock review storage account
 // By collecting the private endpoints to approve, the script can ensure only those private endpoints will be approved
-var privateEndpointIdsToApprove = join(concat(privateManagedPrivateEndpointModule.outputs.privateEndpointIds, airlockManagedPrivateEndpointModule.outputs.privateEndpointIds), '\',\'')
+var privateEndpointIdsToApprove = join(
+  concat(
+    privateManagedPrivateEndpointModule.outputs.privateEndpointIds,
+    airlockManagedPrivateEndpointModule.outputs.privateEndpointIds
+  ),
+  '\',\''
+)
 
 // Start the triggers in the Data Factory
 module startTriggerDeploymentScriptModule 'deploymentScript.bicep' = {
@@ -399,6 +416,6 @@ module approvePrivateEndpointDeploymentScriptModule 'deploymentScript.bicep' = {
     debugMode: debugMode
   }
   // TODO: Validate these dependencies
-  dependsOn: [ centralizedModule, uamiProjectStorageRoleAssignmentModule ]
+  dependsOn: [centralizedModule, uamiProjectStorageRoleAssignmentModule]
 }
 // TODO: Access controls on airlock review storage account, if not centralized, for reviewer object ID

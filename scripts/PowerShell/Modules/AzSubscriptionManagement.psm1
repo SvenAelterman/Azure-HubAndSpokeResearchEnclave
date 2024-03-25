@@ -70,7 +70,8 @@ Function Register-AzProviderFeatureWrapper {
 
     # Get the feature's current registration state
     $Feature = Get-AzProviderFeature -FeatureName $FeatureName -ProviderNamespace $ProviderNamespace
-
+    $AzContext = Get-AzContext
+    
     # If the feature is not registered yet
     if ($Feature.RegistrationState -ne 'Registered') {
         Write-Warning "About to register feature '$($Feature.ProviderName)::$($Feature.FeatureName)' in subscription '$($AzContext.Subscription.Name)'. Expect a (up to 15 minute) delay while the feature registration is completed."

@@ -1,5 +1,7 @@
 targetScope = 'subscription'
 
+//------------------------------ START PARAMETERS ------------------------------
+
 @description('The Azure region where the spoke will be deployed.')
 @allowed([
   'usgovvirginia'
@@ -39,7 +41,7 @@ param networkAddressSpaces array
 @description('The private IP address of the hub firewall.')
 param hubFirewallIp string
 @description('The DNS IP addresses to use for the virtual network. Defaults to the hub firewall IP.')
-param customDnsIps array = [ hubFirewallIp ]
+param customDnsIps array = [hubFirewallIp]
 @description('The Azure resource ID of the hub virtual network to peer with.')
 param hubVNetResourceId string
 @description('The resource ID of the resource group in the hub subscription where storage account-related private DNS zones live.')
@@ -50,9 +52,9 @@ param additionalSubnets array = []
 
 // AVD parameters
 @description('Name of the Desktop application group shown to users in the AVD client.')
-param desktopAppGroupFriendlyName string
+param desktopAppGroupFriendlyName string = 'N/A'
 @description('Name of the Workspace shown to users in the AVD client.')
-param workspaceFriendlyName string
+param workspaceFriendlyName string = 'N/A'
 // @description('The list of remote application groups and applications in each group to create. See sample parameters file for the syntax.')
 // param remoteAppApplicationGroupInfo array
 
@@ -70,11 +72,11 @@ param sessionHostLocalAdminPassword string
   'entraID'
 ])
 param logonType string
-@secure()
 @description('The username of a domain user or service account to use to join the Active Directory domain. Required if using AD join.')
-param domainJoinUsername string = ''
 @secure()
+param domainJoinUsername string = ''
 @description('The password of the domain user or service account to use to join the Active Directory domain. Required if using AD join.')
+@secure()
 param domainJoinPassword string = ''
 
 @description('The fully qualified DNS name of the Active Directory domain to join. Required if using AD join.')
@@ -85,9 +87,9 @@ param adOuPath string = ''
 param sessionHostCount int = 1
 @description('The prefix used for the computer names of the session host(s). Maximum 11 characters.')
 @maxLength(11)
-param sessionHostNamePrefix string
+param sessionHostNamePrefix string = 'N/A'
 @description('A valid Azure Virtual Machine size. Use `az vm list-sizes --location "<region>"` to retrieve a list for the selected location')
-param sessionHostSize string
+param sessionHostSize string = 'N/A'
 @description('If true, will configure the deployment of AVD to make the AVD session hosts usable as research VMs. This will give full desktop access, flow the AVD traffic through the firewall, etc.')
 param useSessionHostAsResearchVm bool = true
 
@@ -127,32 +129,17 @@ param debugMode bool = false
 param debugRemoteIp string = ''
 param debugPrincipalId string = ''
 
-// Variables
+//----------------------------- END PARAMETERS -----------------------------
+
+//----------------------------- START VARIABLES ----------------------------
+
 var sequenceFormatted = format('{0:00}', sequence)
 // TODO: Use like hub
 var defaultTags = {
   ID: '${workloadName}_${sequence}'
 }
 
-var complianceFeatureMap = {
-  NIST80053R5: {
-    usePrivateEndpoints: true
-    useCMK: true
-  }
-  NIST800171R2: {
-    usePrivateEndpoints: true
-    useCMK: true
-  }
-  HIPAAHITRUST: {
-    usePrivateEndpoints: false
-    useCMK: false
-  }
-  // TODO: Verify these
-  CMMC2L2: {
-    usePrivateEndpoints: true
-    useCMK: false
-  }
-}
+var complianceFeatureMap = loadJsonContent('../shared-modules/compliance/complianceFeatureMap.jsonc')
 
 // Use private endpoints when targeting NIST 800-53 R5 or CMMC 2.0 Level 2
 var usePrivateEndpoints = bool(complianceFeatureMap[complianceTarget].usePrivateEndpoints)
@@ -163,7 +150,15 @@ var actualTags = union(defaultTags, tags)
 
 var deploymentNameStructure = '${workloadName}-{rtype}-${deploymentTime}'
 // Naming structure only needs the resource type ({rtype}) and sub-workload name ({subWorkloadName}) replaced
-var namingStructure = replace(replace(replace(replace(namingConvention, '{loc}', location), '{seq}', sequenceFormatted), '{workloadName}', workloadName), '{env}', environment)
+var namingStructure = replace(
+  replace(
+    replace(replace(namingConvention, '{loc}', location), '{seq}', sequenceFormatted),
+    '{workloadName}',
+    workloadName
+  ),
+  '{env}',
+  environment
+)
 // Naming structure for components that don't consider subWorkloadName
 var namingStructureNoSub = replace(namingStructure, '-{subWorkloadName}', '')
 // The naming structure of Resource Groups
@@ -187,6 +182,8 @@ var fileShareNames = {
   exportReview: 'export-review'
 }
 
+//------------------------------ END VARIABLES ------------------------------
+
 // Load RBAC roles
 module rolesModule '../module-library/roles.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'roles'), 64)
@@ -199,11 +196,12 @@ resource securityRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   tags: actualTags
 }
 
-resource avdRg 'Microsoft.Resources/resourceGroups@2023-07-01' = if (useSessionHostAsResearchVm) {
-  name: replace(rgNamingStructure, '{rgname}', 'avd')
-  location: location
-  tags: actualTags
-}
+resource avdRg 'Microsoft.Resources/resourceGroups@2023-07-01' =
+  if (useSessionHostAsResearchVm) {
+    name: replace(rgNamingStructure, '{rgname}', 'avd')
+    location: location
+    tags: actualTags
+  }
 
 resource storageRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: replace(rgNamingStructure, '{rgname}', 'storage')
@@ -236,14 +234,14 @@ var defaultRoutes = json(replace(loadTextContent('./routes/defaultRouteTable.jso
 
 var subnets = {
   ComputeSubnet: {
-    addressPrefix: cidrSubnet(networkAddressSpaces[0], 25, 0)
+    addressPrefix: cidrSubnet(networkAddressSpaces[0], 26, 0)
     // TODO: When not using research VMs as session hosts, allow RDP and SSH from hub
     // TODO: Allow RDP and SSH from BastionSubnet in hub (if present)
     securityRules: []
     routes: defaultRoutes
   }
   PrivateEndpointSubnet: {
-    addressPrefix: cidrSubnet(networkAddressSpaces[0], 26, 2)
+    addressPrefix: cidrSubnet(networkAddressSpaces[0], 26, 1)
     securityRules: []
     routes: defaultRoutes
   }
@@ -274,16 +272,18 @@ var allPrivateLinkDnsZoneNames = loadJsonContent('../shared-modules/dns/allPriva
 
 // Link the Private Link DNS zones in the hub to this virtual network, if not using custom DNS IPs.
 // If using custom DNS IPs, then the implication is that the custom DNS server knows how to resolve the private DNS zones.
-module privateLinkDnsZoneLinkModule '../shared-modules/dns/privateDnsZoneVNetLink.bicep' = [for (zoneName, i) in allPrivateLinkDnsZoneNames: if (length(customDnsIps) == 0) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'dns-link-${i}'), 64)
-  scope: hubDnsZoneResourceGroup
-  params: {
-    registrationEnabled: false
-    dnsZoneName: zoneName
+module privateLinkDnsZoneLinkModule '../shared-modules/dns/privateDnsZoneVNetLink.bicep' = [
+  for (zoneName, i) in allPrivateLinkDnsZoneNames: if (length(customDnsIps) == 0) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'dns-link-${i}'), 64)
+    scope: hubDnsZoneResourceGroup
+    params: {
+      registrationEnabled: false
+      dnsZoneName: zoneName
 
-    vnetId: networkModule.outputs.vNetId
+      vnetId: networkModule.outputs.vNetId
+    }
   }
-}]
+]
 
 // Enable Defender for Cloud and Workload Protection Plans
 module defenderPlansModule './spoke-modules/security/defenderPlans.bicep' = {
@@ -304,7 +304,7 @@ module keyVaultNameModule '../module-library/createValidAzResourceName.bicep' = 
 }
 
 // Create a Key Vault for the customer-managed keys and more
-module keyVaultModule './spoke-modules/security/keyVault.bicep' = {
+module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'kv'), 64)
   scope: securityRg
   params: {
@@ -312,10 +312,12 @@ module keyVaultModule './spoke-modules/security/keyVault.bicep' = {
     keyVaultName: keyVaultNameModule.outputs.shortName
     namingStructure: namingStructureNoSub
     // Only allow remote IP addresses in debug mode
-    allowedIps: debugMode ? [
-      debugRemoteIp
-    ] : []
-    keyVaultAdmins: debugMode ? [ debugPrincipalId ] : []
+    allowedIps: debugMode
+      ? [
+          debugRemoteIp
+        ]
+      : []
+    keyVaultAdmins: debugMode ? [debugPrincipalId] : []
     roles: rolesModule.outputs.roles
     deploymentNameStructure: deploymentNameStructure
     tags: actualTags
@@ -327,19 +329,20 @@ module keyVaultModule './spoke-modules/security/keyVault.bicep' = {
 }
 
 // Create encryption keys in the Key Vault for data factory, storage accounts, disks, and recovery services vault
-module encryptionKeysModule './spoke-modules/security/encryptionKeys.bicep' = if (useCMK) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'keys'), 64)
-  scope: securityRg
-  params: {
-    keyVaultName: keyVaultModule.outputs.keyVaultName
-    keyExpirySeed: encryptionKeyExpirySeed
-    debugMode: debugMode
+module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' =
+  if (useCMK) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'keys'), 64)
+    scope: securityRg
+    params: {
+      keyVaultName: keyVaultModule.outputs.keyVaultName
+      keyExpirySeed: encryptionKeyExpirySeed
+      debugMode: debugMode
+    }
   }
-}
 
-var kvEncryptionKeys = reduce(encryptionKeysModule.outputs.keys, {}, (cur, next) => union(cur, next))
+var kvEncryptionKeys = useCMK ? reduce(encryptionKeysModule.outputs.keys, {}, (cur, next) => union(cur, next)) : null
 
-module uamiModule './spoke-modules/security/uami.bicep' = {
+module uamiModule '../shared-modules/security/uami.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'uami'), 64)
   scope: securityRg
   params: {
@@ -360,21 +363,23 @@ module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bic
 }
 
 // Create the disk encryption set with system-assigned MI and grant access to Key Vault
-module diskEncryptionSetModule './spoke-modules/security/diskEncryptionSet.bicep' = if (useCMK) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'des'), 64)
-  scope: securityRg
-  params: {
-    keyVaultId: keyVaultModule.outputs.id
-    keyUrl: kvEncryptionKeys.diskEncryptionSet.keyUriWithVersion
-    uamiId: uamiModule.outputs.id
-    location: location
-    name: replace(namingStructureNoSub, '{rtype}', 'des')
-    tags: actualTags
-    deploymentNameStructure: deploymentNameStructure
-    kvRoleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
+module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bicep' =
+  if (useCMK) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'des'), 64)
+    scope: securityRg
+    params: {
+      keyVaultId: keyVaultModule.outputs.id
+      // TODO: Validate WithVersion is needed
+      keyUrl: kvEncryptionKeys.diskEncryptionSet.keyUriWithVersion
+      uamiId: uamiModule.outputs.id
+      location: location
+      name: replace(namingStructureNoSub, '{rtype}', 'des')
+      tags: actualTags
+      deploymentNameStructure: deploymentNameStructure
+      kvRoleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
+    }
+    dependsOn: [uamiKvRbacModule]
   }
-  dependsOn: [ uamiKvRbacModule ]
-}
 
 // Deploy the project's private storage account
 module storageModule './spoke-modules/storage/main.bicep' = {
@@ -429,77 +434,83 @@ module privateStContainerRbacModule '../module-library/roleAssignments/roleAssig
   }
 }
 
-module privateStFileShareRbacModule '../module-library/roleAssignments/roleAssignment-st-fileShare.bicep' = [for shareName in items(fileShareNames): {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'st-priv-fs-${shareName.key}-rbac'), 64)
-  scope: storageRg
-  params: {
-    fileShareName: shareName.value
-    principalId: researcherEntraIdObjectId
-    roleDefinitionId: rolesModule.outputs.roles.StorageFileDataSMBShareContributor
-    storageAccountName: storageModule.outputs.storageAccountName
+module privateStFileShareRbacModule '../module-library/roleAssignments/roleAssignment-st-fileShare.bicep' = [
+  for shareName in items(fileShareNames): {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'st-priv-fs-${shareName.key}-rbac'), 64)
+    scope: storageRg
+    params: {
+      fileShareName: shareName.value
+      principalId: researcherEntraIdObjectId
+      roleDefinitionId: rolesModule.outputs.roles.StorageFileDataSMBShareContributor
+      storageAccountName: storageModule.outputs.storageAccountName
+    }
   }
-}]
+]
 
-module avdModule './spoke-modules/virtualDesktop/main.bicep' = if (useSessionHostAsResearchVm) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'avd'), 64)
-  scope: avdRg
-  params: {
-    location: location
-    tags: actualTags
-    namingStructure: replace(namingStructure, '{subWorkloadName}', 'avd')
-    deploymentNameStructure: deploymentNameStructure
+module avdModule '../shared-modules/virtualDesktop/main.bicep' =
+  if (useSessionHostAsResearchVm) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'avd'), 64)
+    scope: avdRg
+    params: {
+      location: location
+      tags: actualTags
+      namingStructure: replace(namingStructure, '{subWorkloadName}', 'avd')
+      deploymentNameStructure: deploymentNameStructure
 
-    desktopAppGroupFriendlyName: desktopAppGroupFriendlyName
-    workspaceFriendlyName: workspaceFriendlyName
-    // TODO: remoteAppApplicationGroupInfo: remoteAppApplicationGroupInfo
+      desktopAppGroupFriendlyName: desktopAppGroupFriendlyName
+      workspaceFriendlyName: workspaceFriendlyName
+      // TODO: remoteAppApplicationGroupInfo: remoteAppApplicationGroupInfo
 
-    roles: rolesModule.outputs.roles
-    userObjectId: researcherEntraIdObjectId
-    adminObjectId: adminEntraIdObjectId
+      roles: rolesModule.outputs.roles
+      userObjectId: researcherEntraIdObjectId
+      adminObjectId: adminEntraIdObjectId
 
-    privateEndpointSubnetId: networkModule.outputs.createdSubnets.privateEndpointSubnet.id
-    privateLinkDnsZoneId: avdConnectionPrivateDnsZone.id
-    usePrivateLinkForHostPool: usePrivateEndpoints
+      privateEndpointSubnetId: networkModule.outputs.createdSubnets.privateEndpointSubnet.id
+      privateLinkDnsZoneId: avdConnectionPrivateDnsZone.id
+      usePrivateLinkForHostPool: usePrivateEndpoints
 
-    logonType: logonType
+      logonType: logonType
+    }
   }
-}
 
 var useADDomainInformation = (logonType == 'ad')
 
-module sessionHostModule './spoke-modules/virtualDesktop/sessionHosts.bicep' = if (useSessionHostAsResearchVm) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'avd-sh'), 64)
-  scope: avdRg
-  params: {
-    namingStructure: namingStructureNoSub
-    subnetId: networkModule.outputs.createdSubnets.computeSubnet.id
-    tags: actualTags
-    location: location
-    diskEncryptionSetId: diskEncryptionSetModule.outputs.id
+module sessionHostModule '../shared-modules/virtualDesktop/sessionHosts.bicep' =
+  if (useSessionHostAsResearchVm) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'avd-sh'), 64)
+    scope: avdRg
+    params: {
+      namingStructure: namingStructureNoSub
+      subnetId: networkModule.outputs.createdSubnets.computeSubnet.id
+      tags: actualTags
+      location: location
+      diskEncryptionSetId: diskEncryptionSetModule.outputs.id
 
-    hostPoolName: avdModule.outputs.hostPoolName
-    hostPoolToken: avdModule.outputs.hostPoolRegistrationToken
+      hostPoolName: avdModule.outputs.hostPoolName
+      hostPoolToken: avdModule.outputs.hostPoolRegistrationToken
 
-    vmLocalAdminPassword: sessionHostLocalAdminPassword
-    vmLocalAdminUsername: sessionHostLocalAdminUsername
-    //vmImageResourceId: sessionHostVmImageResourceId
-    vmCount: sessionHostCount
-    vmNamePrefix: sessionHostNamePrefix
-    vmSize: sessionHostSize
+      vmLocalAdminPassword: sessionHostLocalAdminPassword
+      vmLocalAdminUsername: sessionHostLocalAdminUsername
+      //vmImageResourceId: sessionHostVmImageResourceId
+      vmCount: sessionHostCount
+      vmNamePrefix: sessionHostNamePrefix
+      vmSize: sessionHostSize
 
-    logonType: logonType
-    ADDomainInfo: useADDomainInformation ? {
-      domainJoinPassword: domainJoinPassword
-      domainJoinUsername: domainJoinUsername
-      adDomainFqdn: adDomainFqdn
-      adOuPath: adOuPath
-    } : null
+      logonType: logonType
+      ADDomainInfo: useADDomainInformation
+        ? {
+            domainJoinPassword: domainJoinPassword
+            domainJoinUsername: domainJoinUsername
+            adDomainFqdn: adDomainFqdn
+            adOuPath: adOuPath
+          }
+        : null
 
-    deploymentNameStructure: deploymentNameStructure
-    recoveryServicesVaultId: recoveryServicesVaultModule.outputs.id
-    backupPolicyName: recoveryServicesVaultModule.outputs.backupPolicyName
+      deploymentNameStructure: deploymentNameStructure
+      recoveryServicesVaultId: recoveryServicesVaultModule.outputs.id
+      backupPolicyName: recoveryServicesVaultModule.outputs.backupPolicyName
+    }
   }
-}
 
 // Store the file share connection string of the private storage account in Key Vault
 module privateStorageConnStringSecretModule './spoke-modules/security/keyVault-StorageAccountConnString.bicep' = {
@@ -524,10 +535,12 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 
     useCentralizedReview: isAirlockReviewCentralized
     // Airlock resources in the hub
-    centralAirlockResources: isAirlockReviewCentralized ? {
-      storageAccountId: centralAirlockStorageAccountId
-      keyVaultId: centralAirlockKeyVaultId
-    } : {}
+    centralAirlockResources: isAirlockReviewCentralized
+      ? {
+          storageAccountId: centralAirlockStorageAccountId
+          keyVaultId: centralAirlockKeyVaultId
+        }
+      : {}
 
     airlockFileShareName: isAirlockReviewCentralized ? centralAirlockFileShareName : fileShareNames.exportReview
 
@@ -567,7 +580,9 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
     // TODO: Only if usePrivateEndpoint is true
     privateDnsZonesResourceGroupId: hubPrivateDnsZonesResourceGroupId
     // If airlock review is centralized, then we don't need to create a private endpoint because we don't create a storage account
-    privateEndpointSubnetId: !isAirlockReviewCentralized ? networkModule.outputs.createdSubnets.privateEndpointSubnet.id : ''
+    privateEndpointSubnetId: !isAirlockReviewCentralized
+      ? networkModule.outputs.createdSubnets.privateEndpointSubnet.id
+      : ''
 
     debugMode: debugMode
     debugRemoteIp: debugRemoteIp
@@ -577,7 +592,7 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 }
 
 // Create a Recovery Services Vault
-module recoveryServicesVaultModule './spoke-modules/recovery/recoveryServicesVault.bicep' = {
+module recoveryServicesVaultModule '../shared-modules/recovery/recoveryServicesVault.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'rsv'), 64)
   scope: backupRg
   params: {

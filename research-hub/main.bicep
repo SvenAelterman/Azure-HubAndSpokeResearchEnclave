@@ -25,9 +25,9 @@ param sequence int = 1
 @maxLength(4)
 param environment string = 'dev'
 
-@description('The naming convention for Azure resources. Supported placeholders: {workloadName}, {subWorkloadName}, {environment}, {rtype}, {location}, {sequence}. Recommended separator is hyphen (\'-\'). If using a different separator, specify the namingConventionSeparator parameter.')
+@description('The naming convention for Azure resources. Supported placeholders: {workloadName}, {subWorkloadName}, {env}, {rtype}, {loc}, {seq}. Recommended separator is hyphen (\'-\'). If using a different separator, specify the namingConventionSeparator parameter.')
 @minLength(1)
-param namingConvention string = '{workloadName}-{subWorkloadName}-{environment}-{rtype}-{location}-{sequence}'
+param namingConvention string = '{workloadName}-{subWorkloadName}-{env}-{rtype}-{loc}-{seq}'
 
 param workloadName string = 'ResearchHub'
 
@@ -62,6 +62,34 @@ param deployVpn bool = false
 @description('If true, the research VMs will be AVD session hosts and AVD will be deployed in the spoke only for centralized airlock review purposes.')
 param researchVmsAreSessionHosts bool = false
 
+@description('The number of jump box session hosts to deploy in the research hub. Only used if researchVmsAreSessionHosts is true.')
+@minValue(0)
+param jumpBoxSessionHostCount int = 1
+
+@description('The size of the jump box ession hosts to deploy in the research hub. Only used if researchVmsAreSessionHosts is true.')
+param jumpBoxSessionHostVmSize string = 'Standard_D2as_v5'
+
+// Required if !researchVmsAreSessionHosts
+@description('The local administrator username for the session host VMs. Required if researchVmsAreSessionHosts is false.')
+@secure()
+param sessionHostLocalAdminUsername string = ''
+@description('The local administrator password for the session host VMs. Required if researchVmsAreSessionHosts is false.')
+@secure()
+param sessionHostLocalAdminPassword string = ''
+
+// Required if logonType == ad and !researchVmsAreSessionHosts
+@description('The username of a domain user or service account to use to join the Active Directory domain. Required if using AD join.')
+@secure()
+param domainJoinUsername string = ''
+@description('The password of the domain user or service account to use to join the Active Directory domain. Required if using AD join.')
+@secure()
+param domainJoinPassword string = ''
+@description('The fully qualified DNS name of the Active Directory domain to join. Required if using AD join.')
+param adDomainFqdn string = ''
+
+@description('Optional. The OU path in LDAP notation to use when joining the session hosts.')
+param adOuPath string = ''
+
 /*
  * Network configuration parameters for the research hub
  */
@@ -75,6 +103,19 @@ param additionalSubnets object = {}
 @description('Custom IP addresses to be used for the virtual network.')
 param customDnsIPs array = []
 
+/*
+ * Entra ID object IDs for role assignments
+ */
+
+@description('The Entra ID object ID of the system administrator security group. Optional when using spoke session hosts as research VMs.')
+param systemAdminObjectId string = ''
+
+@description('If true, airlock reviews will take place centralized in the hub.')
+param isAirlockReviewCentralized bool = false
+
+@description('The date and time seed for the expiration of the encryption keys.')
+param encryptionKeyExpirySeed string = utcNow()
+
 // TODO: If no custom DNS IPs are specified, create a private DNS zone for the virtual network for VM auto-registration
 
 /*
@@ -87,49 +128,52 @@ param addAutoDateCreatedTag bool = false
 param addDateModifiedTag bool = true
 param autoDate string = utcNow('yyyy-MM-dd')
 
+param debugMode bool = false
+// param debugRemoteIp string = ''
+// param debugPrincipalId string = ''
+
 //------------------------------- END PARAMETERS -------------------------------
 
+//-------------------------------- START TYPES ---------------------------------
+
+import { remoteAppApplicationGroup } from '../shared-modules/virtualDesktop/main.bicep'
+
+//------------------------------- START VARIABLES ------------------------------
+
 var sequenceFormatted = format('{0:00}', sequence)
-var resourceNamingStructure = replace(replace(replace(replace(namingConvention, '{workloadName}', workloadName), '{environment}', environment), '{sequence}', sequenceFormatted), '{location}', location)
+var resourceNamingStructure = replace(
+  replace(
+    replace(replace(namingConvention, '{workloadName}', workloadName), '{env}', environment),
+    '{seq}',
+    sequenceFormatted
+  ),
+  '{loc}',
+  location
+)
+var resourceNamingStructureNoSub = replace(resourceNamingStructure, '-{subWorkloadName}', '')
 var rgNamingStructure = replace(resourceNamingStructure, '{rtype}', 'rg')
 var deploymentNameStructure = '${workloadName}-{rtype}-${deploymentTime}'
 
-var dateCreatedTag = addAutoDateCreatedTag ? {
-  'date-created': autoDate
-} : {}
+var dateCreatedTag = addAutoDateCreatedTag
+  ? {
+      'date-created': autoDate
+    }
+  : {}
 
-var dateModifiedTag = addDateModifiedTag ? {
-  'date-modified': autoDate
-} : {}
+var dateModifiedTag = addDateModifiedTag
+  ? {
+      'date-modified': autoDate
+    }
+  : {}
 
 var actualTags = union(tags, dateCreatedTag, dateModifiedTag)
 
-// TODO: Make this output of a shared module
-var complianceFeatureMap = {
-  NIST80053R5: {
-    usePrivateEndpoints: true
-    useCMK: true
-  }
-  NIST800171R2: {
-    usePrivateEndpoints: true
-    useCMK: true
-  }
-  HIPAAHITRUST: {
-    usePrivateEndpoints: false
-    useCMK: false
-  }
-  // TODO: Verify these
-  CMMC2L2: {
-    usePrivateEndpoints: true
-    useCMK: false
-  }
-}
+var complianceFeatureMap = loadJsonContent('../shared-modules/compliance/complianceFeatureMap.jsonc')
 
 // Use private endpoints when targeting NIST 800-53 R5 or CMMC 2.0 Level 2
 #disable-next-line no-unused-vars // LATER: Future use
 var usePrivateEndpoints = complianceFeatureMap[complianceTarget].usePrivateEndpoints
 // Use customer-managed keys when targeting NIST 800-53 R5
-#disable-next-line no-unused-vars // LATER: Future use
 var useCMK = complianceFeatureMap[complianceTarget].useCMK
 
 // TODO: Should not be necessary anymore using private endpoints
@@ -141,24 +185,22 @@ var avdTrafficThroughFirewall = researchVmsAreSessionHosts
  */
 
 // Variable to hold the subnets that are always required, regardless of optional components
-// TODO: BREAKING CHANGE: Change subnet names to match the naming convention *Subnet: DataSubnet, AirlockSubnet, etc.
 var requiredSubnets = {
   DataSubnet: {
     serviceEndpoints: []
     routes: []
     securityRules: []
     delegation: ''
-    // TODO: Update when redeploying entirely, make it smaller
-    order: 5
-    subnetCidr: 24
+    order: 4
+    subnetCidr: 27
   }
   AzureFirewallSubnet: {
     serviceEndpoints: []
     routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
     //securityRules: [] Azure Firewall does not support NSGs on its subnets
     delegation: ''
-    order: 4
-    subnetCidr: 24
+    order: 0
+    subnetCidr: 26
   }
   // TODO: The need for this subnet depends on the Firewall SKU and forced tunneling
   AzureFirewallManagementSubnet: {
@@ -166,50 +208,56 @@ var requiredSubnets = {
     routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
     //securityRules: [] Azure Firewall does not support NSGs on its subnets
     delegation: ''
-    order: 3
-    subnetCidr: 24
+    order: 1
+    subnetCidr: 26
   }
   AirlockSubnet: {
     serviceEndpoints: []
     routes: [] // Routes through the firewall will be added later
     securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
     delegation: ''
-    order: 3 // The fourth /27-sized subnet
+    order: 5 // The fourth /27-sized subnet
     subnetCidr: 27 // There will never be many airlock review virtual machines taking up addresses
   }
 }
 
-var AzureBastionSubnet = deployBastion ? {
-  AzureBastionSubnet: {
-    serviceEndpoints: []
-    //routes: [] Bastion doesn't support routes
-    securityRules: loadJsonContent('./hub-modules/networking/securityRules/bastion.jsonc')
-    delegation: ''
-    order: 0 // The first /26, in the first /24 block
-    subnetCidr: 26 // Minimum for AzureBastionSubnet
-  }
-} : {}
+var AzureBastionSubnet = deployBastion
+  ? {
+      AzureBastionSubnet: {
+        serviceEndpoints: []
+        //routes: [] Bastion doesn't support routes
+        securityRules: loadJsonContent('./hub-modules/networking/securityRules/bastion.jsonc')
+        delegation: ''
+        order: 3 // The first /26, in the first /24 block
+        subnetCidr: 26 // Minimum for AzureBastionSubnet
+      }
+    }
+  : {}
 
-var GatewaySubnet = deployVpn ? {
-  GatewaySubnet: {
-    routes: []
-    // securityRules: [] GatewaySubnet does not support NSGs
-    delegation: ''
-    order: 2 // There will already be a /26 for Bastion if enabled, so this becomes the third /27
-    subnetCidr: 27 // Minimum recommended for GatewaySubnet
-  }
-} : {}
+var GatewaySubnet = deployVpn
+  ? {
+      GatewaySubnet: {
+        routes: []
+        // securityRules: [] GatewaySubnet does not support NSGs
+        delegation: ''
+        order: 8 // There will already be a /26 for Bastion if enabled, so this becomes the third /27
+        subnetCidr: 27 // Minimum recommended for GatewaySubnet
+      }
+    }
+  : {}
 
-var AvdSubnet = !researchVmsAreSessionHosts ? {
-  AvdSubnet: {
-    serviceEndpoints: []
-    routes: [] // Routes through the firewall will be added later, but we create the route table here
-    securityRules: []
-    delegation: ''
-    order: 2 // The third /24
-    subnetCidr: 24
-  }
-} : {}
+var AvdSubnet = !researchVmsAreSessionHosts
+  ? {
+      AvdSubnet: {
+        serviceEndpoints: []
+        routes: [] // Routes through the firewall will be added later, but we create the route table here
+        securityRules: []
+        delegation: ''
+        order: 9 // The third /24
+        subnetCidr: 27
+      }
+    }
+  : {}
 
 // Combine all subnets into a single object
 var subnets = union(requiredSubnets, AzureBastionSubnet, GatewaySubnet, AvdSubnet, additionalSubnets)
@@ -218,15 +266,40 @@ var subnets = union(requiredSubnets, AzureBastionSubnet, GatewaySubnet, AvdSubne
  * Calculate the subnet addresses
  */
 
-var actualSubnets = [for (subnet, i) in items(subnets): {
-  // Add a new property addressPrefix to each subnet definition. If addressPrefix property was already defined, it will be respected.
-  '${subnet.key}': union({
-      // If the subnet specifies its own CIDR size, use it; otherwise, use the default
-      addressPrefix: cidrSubnet(networkAddressSpace, subnet.value.subnetCidr, subnet.value.order)
-    }, subnet.value)
-}]
+var actualSubnets = [
+  for (subnet, i) in items(subnets): {
+    // Add a new property addressPrefix to each subnet definition. If addressPrefix property was already defined, it will be respected.
+    '${subnet.key}': union(
+      {
+        // If the subnet specifies its own CIDR size, use it; otherwise, use the default
+        addressPrefix: cidrSubnet(networkAddressSpace, subnet.value.subnetCidr, subnet.value.order)
+      },
+      subnet.value
+    )
+  }
+]
 
 var actualSubnetObject = reduce(actualSubnets, {}, (cur, next) => union(cur, next))
+
+var remoteDesktopAppPath = 'C:\\Windows\\System32\\mstsc.exe'
+
+// Define the Windows built-in Remote Desktop application group and its single application
+var remoteDesktopAppGroupInfo = {
+  name: 'RemoteDesktopAppGroup'
+  friendlyName: 'Remote Desktop'
+  applications: [
+    {
+      name: 'RemoteDesktop'
+      applicationType: 'InBuilt'
+      filePath: remoteDesktopAppPath
+      friendlyName: 'Remote Desktop'
+      iconIndex: 0
+      iconPath: remoteDesktopAppPath
+      commandLineSetting: 'DoNotAllow'
+      showInPortal: true
+    }
+  ]
+}
 
 //------------------------------- END VARIABLES --------------------------------
 
@@ -251,9 +324,9 @@ module networkModule '../shared-modules/networking/main.bicep' = {
   params: {
     location: location
     deploymentNameStructure: deploymentNameStructure
-    namingStructure: replace(resourceNamingStructure, '-{subWorkloadName}', '')
+    namingStructure: resourceNamingStructureNoSub
     subnetDefs: actualSubnetObject
-    vnetAddressPrefixes: [ networkAddressSpace ]
+    vnetAddressPrefixes: [networkAddressSpace]
 
     customDnsIPs: customDnsIPs
 
@@ -281,31 +354,33 @@ module azureFirewallModule 'hub-modules/azureFirewall.bicep' = {
  * Optionally, deploy Azure Bastion
  */
 
-module bastionModule 'hub-modules/networking/bastion.bicep' = if (deployBastion) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'bas'), 64)
-  scope: networkRg
-  params: {
-    location: location
-    bastionSubnetId: networkModule.outputs.createdSubnets.AzureBastionSubnet.id
-    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'bas')
-    tags: actualTags
+module bastionModule 'hub-modules/networking/bastion.bicep' =
+  if (deployBastion) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'bas'), 64)
+    scope: networkRg
+    params: {
+      location: location
+      bastionSubnetId: networkModule.outputs.createdSubnets.AzureBastionSubnet.id
+      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'bas')
+      tags: actualTags
+    }
   }
-}
 
 /*
  * Optionally, deploy a VPN gateway
  */
 
-module vpnGatewayModule 'hub-modules/networking/vpnGateway.bicep' = if (deployVpn) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'vpngw'), 64)
-  scope: networkRg
-  params: {
-    location: location
-    gatewaySubnetId: networkModule.outputs.createdSubnets.GatewaySubnet.id
-    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'vpn')
-    tags: actualTags
+module vpnGatewayModule 'hub-modules/networking/vpnGateway.bicep' =
+  if (deployVpn) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'vpngw'), 64)
+    scope: networkRg
+    params: {
+      location: location
+      gatewaySubnetId: networkModule.outputs.createdSubnets.GatewaySubnet.id
+      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'vpn')
+      tags: actualTags
+    }
   }
-}
 
 /*
  * Deploy all private DNS zones
@@ -325,60 +400,208 @@ module allPrivateDnsZonesModule 'hub-modules/dns/allPrivateDnsZones.bicep' = {
 }
 
 /*
- * Deploy Azure Virtual Desktop
+ * Deploy Security resources
  */
 
-// TODO: Move this to the AVD module because AVD in the hub might be optional
-// Modify the AVD route table to route traffic through the Azure Firewall
-module avdRouteTableModule '../shared-modules/networking/rt.bicep' = if (!researchVmsAreSessionHosts) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw'), 64)
-  scope: networkRg
-  params: {
-    location: location
-    // TODO: Move routes to JSON file and replace tokens for FW IP
-    routes: [
-      {
-        name: 'Internet_via_Firewall'
-        properties: {
-          addressPrefix: '0.0.0.0/0'
-          nextHopType: 'VirtualAppliance'
-          nextHopIpAddress: azureFirewallModule.outputs.fwPrIp
-        }
-      }
-      // TODO: Add routes to bypass FW for updates, Monitor, and conditionally AVD
-    ]
-    rtName: networkModule.outputs.createdSubnets.AvdSubnet.routeTableName
-    tags: actualTags
-  }
-}
-
-resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' = if (!researchVmsAreSessionHosts) {
+// Create the security resource group
+resource securityRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   #disable-next-line BCP334
-  name: take(replace(rgNamingStructure, '{subWorkloadName}', 'avd'), 64)
+  name: take(replace(rgNamingStructure, '{subWorkloadName}', 'security'), 64)
   location: location
   tags: actualTags
 }
 
-// TODO: Customize AVD module to support full desktop for researchers, based on param value
-// module avd 'hub-modules/avd/avd.bicep' = {
-//   name: take(replace(deploymentNameStructure, '{rtype}', 'avd'), 64)
-//   scope: avdRg
+module keyVaultNameModule '../module-library/createValidAzResourceName.bicep' = {
+  scope: securityRg
+  name: take(replace(deploymentNameStructure, '{rtype}', 'kvname'), 64)
+  params: {
+    environment: environment
+    location: location
+    namingConvention: namingConvention
+    resourceType: 'kv'
+    sequence: sequence
+    workloadName: workloadName
+  }
+}
 
-//   params: {
-//     avdSubnetId: networkModule.outputs.createdSubnets.avd.id
-//     avdVmHostNameStructure: 'rh-avd-vm'
-//     deploymentNameStructure: deploymentNameStructure
-//     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
-//     location: location
-//     tags: actualTags
-//   }
+module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
+  scope: securityRg
+  name: take(replace(deploymentNameStructure, '{rtype}', 'kv'), 64)
+  params: {
+    location: location
+    deploymentNameStructure: deploymentNameStructure
+    keyVaultName: keyVaultNameModule.outputs.shortName
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'kv')
+    tags: actualTags
+    useCMK: useCMK
+  }
+}
 
-//   dependsOn: [
-//     avdRouteTableModule
-//     azureFirewallModule
-//   ]
-// }
+module uamiModule '../shared-modules/security/uami.bicep' = {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'uami'), 64)
+  scope: securityRg
+  params: {
+    tags: actualTags
+    uamiName: replace(resourceNamingStructureNoSub, '{rtype}', 'uami')
+    location: location
+  }
+}
+
+module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bicep' = {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'uami-kv-rbac'), 64)
+  scope: securityRg
+  params: {
+    kvName: keyVaultModule.outputs.keyVaultName
+    principalId: uamiModule.outputs.principalId
+    roleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
+  }
+}
+
+// Create encryption keys in the Key Vault for data factory, storage accounts, disks, and recovery services vault
+module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' =
+  if (useCMK) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'keys'), 64)
+    scope: securityRg
+    params: {
+      keyVaultName: keyVaultModule.outputs.keyVaultName
+      keyExpirySeed: encryptionKeyExpirySeed
+      debugMode: debugMode
+    }
+  }
+
+var kvEncryptionKeys = reduce(encryptionKeysModule.outputs.keys, {}, (cur, next) => union(cur, next))
+
+var deployingVMs = (!researchVmsAreSessionHosts && jumpBoxSessionHostCount > 0) || isAirlockReviewCentralized
+
+// Create a Disk Encryption Set if we're deploying any VMs and we need to use CMK
+module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bicep' =
+  if (deployingVMs && useCMK) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'des'), 64)
+    scope: securityRg
+    params: {
+      location: location
+      deploymentNameStructure: deploymentNameStructure
+      tags: actualTags
+
+      keyVaultId: keyVaultModule.outputs.id
+      uamiId: uamiModule.outputs.id
+      // TODO: Validate WithVersion is needed
+      keyUrl: kvEncryptionKeys.diskEncryptionSet.keyUriWithVersion
+      name: replace(resourceNamingStructureNoSub, '{rtype}', 'des')
+      kvRoleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
+    }
+  }
+
+/*
+ * Deploy Azure Virtual Desktop
+ */
+
+// Modify the AVD route table to route traffic through the Azure Firewall
+module avdRouteTableModule '../shared-modules/networking/rt.bicep' =
+  if (!researchVmsAreSessionHosts) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw'), 64)
+    scope: networkRg
+    params: {
+      location: location
+      // TODO: Move routes to JSON file and replace tokens for FW IP
+      routes: [
+        {
+          name: 'Internet_via_Firewall'
+          properties: {
+            addressPrefix: '0.0.0.0/0'
+            nextHopType: 'VirtualAppliance'
+            nextHopIpAddress: azureFirewallModule.outputs.fwPrIp
+          }
+        }
+        // TODO: Add routes to bypass FW for updates, Monitor, and conditionally AVD
+      ]
+      rtName: networkModule.outputs.createdSubnets.AvdSubnet.routeTableName
+      tags: actualTags
+    }
+  }
+
+resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' =
+  if (!researchVmsAreSessionHosts) {
+    #disable-next-line BCP334
+    name: take(replace(rgNamingStructure, '{subWorkloadName}', 'avd'), 64)
+    location: location
+    tags: actualTags
+  }
+
+// Deploy Azure Virtual Desktop resources if AVD is used as jump hosts into the spokes
+module avdJumpBoxModule '../shared-modules/virtualDesktop/main.bicep' =
+  if (!researchVmsAreSessionHosts) {
+    scope: avdRg
+    name: take(replace(deploymentNameStructure, '{rtype}', 'avd'), 64)
+    params: {
+      location: location
+      deploymentNameStructure: deploymentNameStructure
+      logonType: logonType
+      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
+      privateEndpointSubnetId: networkModule.outputs.createdSubnets.DataSubnet.id
+      privateLinkDnsZoneId: resourceId(
+        subscription().subscriptionId,
+        networkRg.name,
+        'Microsoft.Network/privateDnsZones',
+        'privatelink.wvd.microsoft.com'
+      )
+      roles: rolesModule.outputs.roles
+      tags: actualTags
+
+      adminObjectId: systemAdminObjectId
+
+      workspaceFriendlyName: 'Secure Research Access (${workloadName}-${sequenceFormatted})'
+      desktopAppGroupFriendlyName: ''
+      deployDesktopAppGroup: false
+
+      remoteAppApplicationGroupInfo: [remoteDesktopAppGroupInfo]
+    }
+  }
+
+module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHosts.bicep' =
+  if (!researchVmsAreSessionHosts && jumpBoxSessionHostCount > 0) {
+    scope: avdRg
+    name: take(replace(deploymentNameStructure, '{rtype}', 'avd-sh'), 64)
+    params: {
+      location: location
+      deploymentNameStructure: deploymentNameStructure
+      tags: actualTags
+
+      diskEncryptionSetId: diskEncryptionSetModule.outputs.id
+
+      // TODO: Specify if required to backup
+      backupPolicyName: ''
+      recoveryServicesVaultId: ''
+
+      hostPoolName: avdJumpBoxModule.outputs.hostPoolName
+      hostPoolToken: avdJumpBoxModule.outputs.hostPoolRegistrationToken
+      logonType: logonType
+      namingStructure: resourceNamingStructure
+      subnetId: networkModule.outputs.createdSubnets.AvdSubnet.id
+      vmCount: jumpBoxSessionHostCount
+      vmLocalAdminUsername: sessionHostLocalAdminUsername
+      vmLocalAdminPassword: sessionHostLocalAdminPassword
+      vmNamePrefix: 'sh-${workloadName}${sequence}'
+      vmSize: jumpBoxSessionHostVmSize
+
+      ADDomainInfo: logonType == 'ad'
+        ? {
+            domainJoinPassword: domainJoinPassword
+            domainJoinUsername: domainJoinUsername
+            adDomainFqdn: adDomainFqdn
+            adOuPath: adOuPath
+          }
+        : null
+    }
+  }
+
+module rolesModule '../module-library/roles.bicep' = {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'roles'), 64)
+}
 
 output hubFirewallIp string = azureFirewallModule.outputs.fwPrIp
 output hubVnetResourceId string = networkModule.outputs.vNetId
 output hubPrivateDnsZonesResourceGroupId string = networkRg.id
+// TODO: Output the resource ID of the remote application group for the remote desktop application
+// To be used in the spoke for setting permissions
+//output remoteDesktopAppGroupResourceId string = virtualDesktopModule.outputs.remoteDesktopAppGroupResourceId

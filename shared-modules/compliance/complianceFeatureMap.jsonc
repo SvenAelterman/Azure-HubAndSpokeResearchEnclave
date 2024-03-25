@@ -1,0 +1,19 @@
+{
+  "NIST80053R5": {
+    "usePrivateEndpoints": true,
+    "useCMK": true
+  },
+  "NIST800171R2": {
+    "usePrivateEndpoints": true,
+    "useCMK": true
+  },
+  "HIPAAHITRUST": {
+    "usePrivateEndpoints": false,
+    "useCMK": false
+  },
+  // TODO: Verify these
+  "CMMC2L2": {
+    "usePrivateEndpoints": true,
+    "useCMK": false
+  }
+}
