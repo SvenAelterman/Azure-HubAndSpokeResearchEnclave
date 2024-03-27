@@ -196,12 +196,12 @@ resource securityRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   tags: actualTags
 }
 
-resource avdRg 'Microsoft.Resources/resourceGroups@2023-07-01' =
-  if (useSessionHostAsResearchVm) {
-    name: replace(rgNamingStructure, '{rgname}', 'avd')
-    location: location
-    tags: actualTags
-  }
+// resource avdRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
+//   //if (useSessionHostAsResearchVm) {
+//   name: replace(rgNamingStructure, '{rgname}', 'avd')
+//   location: location
+//   tags: actualTags
+// }
 
 resource storageRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: replace(rgNamingStructure, '{rgname}', 'storage')
@@ -447,68 +447,45 @@ module privateStFileShareRbacModule '../module-library/roleAssignments/roleAssig
   }
 ]
 
-module avdModule '../shared-modules/virtualDesktop/main.bicep' =
+module vdiModule '../shared-modules/virtualDesktop/main.bicep' =
   if (useSessionHostAsResearchVm) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'avd'), 64)
-    scope: avdRg
+    name: take(replace(deploymentNameStructure, '{rtype}', 'vdi'), 64)
     params: {
-      location: location
+      resourceGroupName: replace(rgNamingStructure, '{rgname}', 'avd')
       tags: actualTags
-      namingStructure: replace(namingStructure, '{subWorkloadName}', 'avd')
+      location: location
+
+      usePrivateLinkForHostPool: usePrivateEndpoints
+      privateEndpointSubnetId: usePrivateEndpoints ? networkModule.outputs.createdSubnets.privateEndpointSubnet.id : ''
+      privateLinkDnsZoneId: usePrivateEndpoints ? avdConnectionPrivateDnsZone.id : ''
+
+      adminObjectId: adminEntraIdObjectId
       deploymentNameStructure: deploymentNameStructure
-
       desktopAppGroupFriendlyName: desktopAppGroupFriendlyName
-      workspaceFriendlyName: workspaceFriendlyName
-      // TODO: remoteAppApplicationGroupInfo: remoteAppApplicationGroupInfo
-
+      logonType: logonType
+      namingStructure: replace(namingStructure, '{subWorkloadName}', 'avd')
       roles: rolesModule.outputs.roles
       userObjectId: researcherEntraIdObjectId
-      adminObjectId: adminEntraIdObjectId
+      workspaceFriendlyName: workspaceFriendlyName
 
-      privateEndpointSubnetId: networkModule.outputs.createdSubnets.privateEndpointSubnet.id
-      privateLinkDnsZoneId: avdConnectionPrivateDnsZone.id
-      usePrivateLinkForHostPool: usePrivateEndpoints
+      computeSubnetId: networkModule.outputs.createdSubnets.computeSubnet.id
 
-      logonType: logonType
-    }
-  }
-
-var useADDomainInformation = (logonType == 'ad')
-
-module sessionHostModule '../shared-modules/virtualDesktop/sessionHosts.bicep' =
-  if (useSessionHostAsResearchVm) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'avd-sh'), 64)
-    scope: avdRg
-    params: {
-      namingStructure: namingStructureNoSub
-      subnetId: networkModule.outputs.createdSubnets.computeSubnet.id
-      tags: actualTags
-      location: location
+      sessionHostLocalAdminUsername: sessionHostLocalAdminUsername
+      sessionHostLocalAdminPassword: sessionHostLocalAdminPassword
+      useCMK: useCMK
       diskEncryptionSetId: diskEncryptionSetModule.outputs.id
+      sessionHostCount: sessionHostCount
 
-      hostPoolName: avdModule.outputs.hostPoolName
-      hostPoolToken: avdModule.outputs.hostPoolRegistrationToken
-
-      vmLocalAdminPassword: sessionHostLocalAdminPassword
-      vmLocalAdminUsername: sessionHostLocalAdminUsername
-      //vmImageResourceId: sessionHostVmImageResourceId
-      vmCount: sessionHostCount
-      vmNamePrefix: sessionHostNamePrefix
-      vmSize: sessionHostSize
-
-      logonType: logonType
-      ADDomainInfo: useADDomainInformation
-        ? {
-            domainJoinPassword: domainJoinPassword
-            domainJoinUsername: domainJoinUsername
-            adDomainFqdn: adDomainFqdn
-            adOuPath: adOuPath
-          }
-        : null
-
-      deploymentNameStructure: deploymentNameStructure
-      recoveryServicesVaultId: recoveryServicesVaultModule.outputs.id
       backupPolicyName: recoveryServicesVaultModule.outputs.backupPolicyName
+      recoveryServicesVaultId: recoveryServicesVaultModule.outputs.id
+
+      domainJoinPassword: domainJoinPassword
+      domainJoinUsername: domainJoinUsername
+      sessionHostNamePrefix: sessionHostNamePrefix
+      sessionHostSize: sessionHostSize
+
+      adDomainFqdn: adDomainFqdn
+      adOuPath: adOuPath
     }
   }
 
@@ -554,6 +531,9 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 
     encryptionKeyVaultUri: useCMK ? keyVaultModule.outputs.uri : ''
     encryptionUamiId: useCMK ? uamiModule.outputs.id : ''
+    // TODO: Do not hardcode encryption key names
+    storageAccountEncryptionKeyName: useCMK ? 'storage' : ''
+    adfEncryptionKeyName: useCMK ? 'adf' : ''
 
     // Key Vault will store the file share's connection information and the encryption key, if needed
     keyVaultName: keyVaultModule.outputs.keyVaultName
@@ -571,10 +551,6 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 
     containerNames: containerNames
 
-    // TODO: Do not hardcode encryption key names
-    storageAccountEncryptionKeyName: useCMK ? 'storage' : ''
-    adfEncryptionKeyName: useCMK ? 'adf' : ''
-
     researcherAadObjectId: researcherEntraIdObjectId
 
     // TODO: Only if usePrivateEndpoint is true
@@ -591,13 +567,14 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
   }
 }
 
-// Create a Recovery Services Vault
+// Create a Recovery Services Vault and default backup policy
 module recoveryServicesVaultModule '../shared-modules/recovery/recoveryServicesVault.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'rsv'), 64)
   scope: backupRg
   params: {
     location: location
     tags: actualTags
+    // TODO: Only when UseCMK
     encryptionKeyUri: kvEncryptionKeys.rsv.keyUri
     namingConvention: namingStructureNoSub
     userAssignedIdentityId: uamiModule.outputs.id
