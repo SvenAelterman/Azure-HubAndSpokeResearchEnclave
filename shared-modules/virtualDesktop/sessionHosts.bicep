@@ -27,7 +27,13 @@ param hostPoolName string
 @secure()
 param hostPoolToken string
 
-param vmImageResourceId string = ''
+param imageReference imageReferenceType = {
+  // No image resource ID specified; use a default image
+  publisher: 'microsoftwindowsdesktop'
+  offer: 'office-365'
+  version: 'latest'
+  sku: 'win11-23h2-avd-m365'
+}
 
 @allowed(['ad', 'entraID'])
 param logonType string
@@ -47,6 +53,14 @@ type activeDirectoryDomainInfo = {
   adOuPath: string?
 }
 
+type imageReferenceType = {
+  publisher: string?
+  offer: string?
+  version: string?
+  sku: string?
+  id: string?
+}
+
 // Nested templates location (not used here, just for reference)
 // Commercial: https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/armtemplates/Hostpool_1.0.02544.255/nestedTemplates/
 // Azure Gov:  https://wvdportalstorageblob.blob.core.usgovcloudapi.net/galleryartifacts/armtemplates/Hostpool_02-27-2023/nestedTemplates/
@@ -57,8 +71,6 @@ var configurationFileName = 'Configuration_1.0.02544.255.zip'
 var artifactsLocation = 'https://wvdportalstorageblob.blob.${az.environment().suffixes.storage}/galleryartifacts/${configurationFileName}'
 
 var intuneMdmId = '0000000a-0000-0000-c000-000000000000'
-
-// TODO: Add session hosts to backup
 
 // Create a new availability set for the session hosts
 resource availabilitySet 'Microsoft.Compute/availabilitySets@2023-03-01' = {
@@ -77,7 +89,7 @@ resource availabilitySet 'Microsoft.Compute/availabilitySets@2023-03-01' = {
 // Create the NICs for each session host
 resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [
   for i in range(0, vmCount): {
-    name: replace(namingStructure, '{rtype}', '${vmNamePrefix}${i}-nic') // '${vmNamePrefix}${i}-nic'
+    name: replace(namingStructure, '{rtype}', '${computerNames[i]}-nic') // '${vmNamePrefix}${i}-nic'
     location: location
     tags: tags
     properties: {
@@ -98,10 +110,12 @@ resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [
   }
 ]
 
+var computerNames = [for i in range(0, vmCount): '${vmNamePrefix}-${i}']
+
 // Create the session hosts
 resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [
   for i in range(0, vmCount): {
-    name: replace(namingStructure, '{rtype}', '${vmNamePrefix}${i}')
+    name: replace(namingStructure, '{rtype}', computerNames[i])
     location: location
     tags: tags
     properties: {
@@ -111,7 +125,7 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [
         vmSize: vmSize
       }
       osProfile: {
-        computerName: '${vmNamePrefix}${i}'
+        computerName: computerNames[i]
         adminUsername: vmLocalAdminUsername
         adminPassword: vmLocalAdminPassword
         windowsConfiguration: {
@@ -134,22 +148,13 @@ resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [
           osType: 'Windows'
           managedDisk: {
             storageAccountType: 'StandardSSD_LRS'
+            // TODO: Only when using CMK
             diskEncryptionSet: {
               id: diskEncryptionSetId
             }
           }
         }
-        imageReference: !empty(vmImageResourceId)
-          ? {
-              id: vmImageResourceId
-            }
-          : {
-              // No image resource ID specified; use a default image
-              publisher: 'microsoftwindowsdesktop'
-              offer: 'office-365'
-              version: 'latest'
-              sku: 'win11-23h2-avd-m365'
-            }
+        imageReference: imageReference
       }
       networkProfile: {
         networkInterfaces: [
@@ -211,8 +216,6 @@ resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023
     dependsOn: [
       domainJoinExtension[i]
       entraIDJoinExtension[i]
-      windowsGuestAttestationExtension[i]
-      windowsVMGuestConfigExtension[i]
     ]
   }
 ]
@@ -317,13 +320,13 @@ resource windowsVMGuestConfigExtension 'Microsoft.Compute/virtualMachines/extens
 
 // LATER: Deploy NVIDIA or AMD drivers if needed, based on vmSize
 
-var rsvRgName = split(recoveryServicesVaultId, '/')[4]
+var rsvRgName = !empty(recoveryServicesVaultId) ? split(recoveryServicesVaultId, '/')[4] : ''
 
 // Create a backup item for each session host
 // This must be deployed in a separate module because it's in a different resource group
 module backupItems '../recovery/rsvProtectedItem.bicep' = [
   for i in range(0, vmCount): if (!empty(backupPolicyName) && !empty(recoveryServicesVaultId)) {
-    name: replace(deploymentNameStructure, '{rtype}', '${vmNamePrefix}${i}-backup')
+    name: replace(deploymentNameStructure, '{rtype}', '${computerNames[i]}-backup')
     scope: resourceGroup(rsvRgName)
     params: {
       backupPolicyName: backupPolicyName

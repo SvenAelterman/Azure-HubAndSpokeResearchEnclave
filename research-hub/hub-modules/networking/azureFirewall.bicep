@@ -14,18 +14,20 @@ param location string = resourceGroup().location
 var publicIpCount = 2
 
 // Create the public IP address(es) for the Firewall
-resource firewallPublicIps 'Microsoft.Network/publicIPAddresses@2022-09-01' = [for i in range(0, publicIpCount): {
-  name: replace(namingStructure, '{rtype}', 'pip-fw${i}')
-  location: location
-  sku: {
-    name: 'Standard'
+resource firewallPublicIps 'Microsoft.Network/publicIPAddresses@2022-09-01' = [
+  for i in range(0, publicIpCount): {
+    name: replace(namingStructure, '{rtype}', 'pip-fw${i}')
+    location: location
+    sku: {
+      name: 'Standard'
+    }
+    properties: {
+      publicIPAddressVersion: 'IPv4'
+      publicIPAllocationMethod: 'Static'
+    }
+    tags: tags
   }
-  properties: {
-    publicIPAddressVersion: 'IPv4'
-    publicIPAllocationMethod: 'Static'
-  }
-  tags: tags
-}]
+]
 
 // Create firewall policy
 resource firewallPolicy 'Microsoft.Network/firewallPolicies@2022-01-01' = {
@@ -41,27 +43,27 @@ resource firewallPolicy 'Microsoft.Network/firewallPolicies@2022-01-01' = {
 
 var defaultRuleCollectionGroups = {
   AVD: {
-    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-AVD.jsonc')
+    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AVD.jsonc')
     priority: 500
   }
   AzurePlatform: {
-    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-AzurePlatform.jsonc')[az.environment().name]
+    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AzurePlatform.jsonc')[az.environment().name]
     priority: 1000
   }
   AVDRDWeb: {
-    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-AVDRDWeb.jsonc')
+    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AVDRDWeb.jsonc')
     priority: 100
   }
   ManagedDevices: {
-    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-ManagedDevices.jsonc')[az.environment().name]
+    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-ManagedDevices.jsonc')[az.environment().name]
     priority: 300
   }
   Office365Activation: {
-    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-Office365Activation.jsonc')[az.environment().name]
+    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-Office365Activation.jsonc')[az.environment().name]
     priority: 700
   }
   ResearchDataSources: {
-    rules: loadJsonContent('../azure-firewall-rules/azFwPolRuleColls-ResearchDataSources.jsonc')
+    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-ResearchDataSources.jsonc')
     priority: 600
   }
 }
@@ -69,14 +71,16 @@ var defaultRuleCollectionGroups = {
 // TODO: Divide into optional rule collections: AzurePlatform, AVDRDWeb (rename!), ResearchDataSources (?)
 
 @batchSize(1) // Do not process more than one rule collection group at a time
-resource ruleCollectionGroups 'Microsoft.Network/firewallPolicies/ruleCollectionGroups@2022-07-01' = [for group in items(defaultRuleCollectionGroups): {
-  name: group.key
-  parent: firewallPolicy
-  properties: {
-    priority: group.value.priority
-    ruleCollections: group.value.rules
+resource ruleCollectionGroups 'Microsoft.Network/firewallPolicies/ruleCollectionGroups@2022-07-01' = [
+  for group in items(defaultRuleCollectionGroups): {
+    name: group.key
+    parent: firewallPolicy
+    properties: {
+      priority: group.value.priority
+      ruleCollections: group.value.rules
+    }
   }
-}]
+]
 
 // Create Azure Firewall resource
 resource firewall 'Microsoft.Network/azureFirewalls@2022-01-01' = {
@@ -95,7 +99,6 @@ resource firewall 'Microsoft.Network/azureFirewalls@2022-01-01' = {
             id: firewallPublicIps[0].id
           }
         }
-
       }
     ]
     managementIpConfiguration: {
@@ -121,7 +124,7 @@ resource firewall 'Microsoft.Network/azureFirewalls@2022-01-01' = {
   tags: tags
 
   // This dependency is added manually because otherwise the FW will try to deploy before the rule collections are ready
-  dependsOn: [ ruleCollectionGroups ]
+  dependsOn: [ruleCollectionGroups]
 }
 
 output fwPrIp string = firewall.properties.ipConfigurations[0].properties.privateIPAddress

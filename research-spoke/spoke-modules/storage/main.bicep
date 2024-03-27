@@ -31,8 +31,8 @@ param storageAccountPrivateEndpointGroups array = [
   'file'
 ]
 
-@description('The type of identity to use for identity-based authentication to the file share.')
-@allowed([ 'AADDS', 'AADKERB', 'None' ])
+@description('The type of identity to use for identity-based authentication to the file share. When using AD DS, set to None.')
+@allowed(['AADDS', 'AADKERB', 'None'])
 param filesIdentityType string
 
 resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
@@ -52,17 +52,21 @@ resource hubPrivateDnsZoneResourceGroup 'Microsoft.Resources/resourceGroups@2023
 }
 
 // Find the existing (in the hub) Private DNS Zones for storage account private endpoints
-resource privateDnsZones 'Microsoft.Network/privateDnsZones@2020-06-01' existing = [for subResource in storageAccountPrivateEndpointGroups: {
-  name: 'privatelink.${subResource}.${az.environment().suffixes.storage}'
-  scope: hubPrivateDnsZoneResourceGroup
-}]
+resource privateDnsZones 'Microsoft.Network/privateDnsZones@2020-06-01' existing = [
+  for subResource in storageAccountPrivateEndpointGroups: {
+    name: 'privatelink.${subResource}.${az.environment().suffixes.storage}'
+    scope: hubPrivateDnsZoneResourceGroup
+  }
+]
 
 // Create an array of custom objects where each object represents a single private endpoint for the storage account
-var storageAccountPrivateEndpointInfo = [for (subResource, i) in storageAccountPrivateEndpointGroups: {
-  subResourceName: subResource
-  dnsZoneId: privateDnsZones[i].id
-  dnsZoneName: privateDnsZones[i].name
-}]
+var storageAccountPrivateEndpointInfo = [
+  for (subResource, i) in storageAccountPrivateEndpointGroups: {
+    subResourceName: subResource
+    dnsZoneId: privateDnsZones[i].id
+    dnsZoneName: privateDnsZones[i].name
+  }
+]
 
 module storageAccountNameModule '../../../module-library/createValidAzResourceName.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'saname'), 64)
