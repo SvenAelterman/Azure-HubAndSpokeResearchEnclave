@@ -56,7 +56,7 @@ param privateEndpointSubnetId string
 param tags object = {}
 param subWorkloadName string = 'airlock'
 
-@allowed(['AADDS', 'AADKERB'])
+@allowed(['AADDS', 'AADKERB', 'None'])
 param filesIdentityType string
 
 param debugMode bool = false

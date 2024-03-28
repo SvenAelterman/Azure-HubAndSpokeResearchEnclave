@@ -97,16 +97,25 @@ param adOuPath string = ''
 @description('The virtual network\'s address space in CIDR notation, e.g. 10.0.0.0/16. The last octet must be 0. The maximum IPv4 CIDR length is 24. The IPv6 CIDR length should be 64.')
 param networkAddressSpace string
 
-@description('Any additional subnets for the hub virtual network.')
-param additionalSubnets object = {}
+@description('Any additional subnets for the hub virtual network. Specify the properties using ARM syntax/naming.')
+param additionalSubnets array = []
 
 @description('Custom IP addresses to be used for the virtual network.')
 param customDnsIPs array = []
 
+@description('The Azure resource ID of the virtual network that is considered the main hub. Required when using Active Directory authentication to reach domain controllers.')
+param mainHubVNetId string = ''
+
+@description('If true, peering to the main hub will enable using the main hub\'s virtual network gateway for hybrid networking.')
+param useMainHubGateway bool = true
+
+@description('The IP address of the main hub\'s network virtual appliance (NVA).')
+#disable-next-line no-unused-params // LATER: Future use
+param mainHubNvaIp string = ''
+
 /*
  * Entra ID object IDs for role assignments
  */
-
 @description('The Entra ID object ID of the system administrator security group. Optional when using spoke session hosts as research VMs.')
 param systemAdminObjectId string = ''
 
@@ -136,7 +145,7 @@ param debugMode bool = false
 
 //-------------------------------- START TYPES ---------------------------------
 
-import { remoteAppApplicationGroup } from '../shared-modules/virtualDesktop/main.bicep'
+import { remoteAppApplicationGroup } from '../shared-modules/virtualDesktop/avd.bicep'
 
 //------------------------------- START VARIABLES ------------------------------
 
@@ -180,107 +189,6 @@ var useCMK = complianceFeatureMap[complianceTarget].useCMK
 #disable-next-line no-unused-vars // LATER: Future use
 var avdTrafficThroughFirewall = researchVmsAreSessionHosts
 
-/*
- * DEFINE THE RESEARCH HUB VIRTUAL NETWORK'S SUBNETS
- */
-
-// Variable to hold the subnets that are always required, regardless of optional components
-var requiredSubnets = {
-  DataSubnet: {
-    serviceEndpoints: []
-    routes: []
-    securityRules: []
-    delegation: ''
-    order: 4
-    subnetCidr: 27
-  }
-  AzureFirewallSubnet: {
-    serviceEndpoints: []
-    routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
-    //securityRules: [] Azure Firewall does not support NSGs on its subnets
-    delegation: ''
-    order: 0
-    subnetCidr: 26
-  }
-  // TODO: The need for this subnet depends on the Firewall SKU and forced tunneling
-  AzureFirewallManagementSubnet: {
-    serviceEndpoints: []
-    routes: loadJsonContent('../shared-modules/networking/routes/AzureFirewall.json')
-    //securityRules: [] Azure Firewall does not support NSGs on its subnets
-    delegation: ''
-    order: 1
-    subnetCidr: 26
-  }
-  AirlockSubnet: {
-    serviceEndpoints: []
-    routes: [] // Routes through the firewall will be added later
-    securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
-    delegation: ''
-    order: 5 // The fourth /27-sized subnet
-    subnetCidr: 27 // There will never be many airlock review virtual machines taking up addresses
-  }
-}
-
-var AzureBastionSubnet = deployBastion
-  ? {
-      AzureBastionSubnet: {
-        serviceEndpoints: []
-        //routes: [] Bastion doesn't support routes
-        securityRules: loadJsonContent('./hub-modules/networking/securityRules/bastion.jsonc')
-        delegation: ''
-        order: 3 // The first /26, in the first /24 block
-        subnetCidr: 26 // Minimum for AzureBastionSubnet
-      }
-    }
-  : {}
-
-var GatewaySubnet = deployVpn
-  ? {
-      GatewaySubnet: {
-        routes: []
-        // securityRules: [] GatewaySubnet does not support NSGs
-        delegation: ''
-        order: 8 // There will already be a /26 for Bastion if enabled, so this becomes the third /27
-        subnetCidr: 27 // Minimum recommended for GatewaySubnet
-      }
-    }
-  : {}
-
-var AvdSubnet = !researchVmsAreSessionHosts
-  ? {
-      AvdSubnet: {
-        serviceEndpoints: []
-        routes: [] // Routes through the firewall will be added later, but we create the route table here
-        securityRules: []
-        delegation: ''
-        order: 9 // The third /24
-        subnetCidr: 27
-      }
-    }
-  : {}
-
-// Combine all subnets into a single object
-var subnets = union(requiredSubnets, AzureBastionSubnet, GatewaySubnet, AvdSubnet, additionalSubnets)
-
-/*
- * Calculate the subnet addresses
- */
-
-var actualSubnets = [
-  for (subnet, i) in items(subnets): {
-    // Add a new property addressPrefix to each subnet definition. If addressPrefix property was already defined, it will be respected.
-    '${subnet.key}': union(
-      {
-        // If the subnet specifies its own CIDR size, use it; otherwise, use the default
-        addressPrefix: cidrSubnet(networkAddressSpace, subnet.value.subnetCidr, subnet.value.order)
-      },
-      subnet.value
-    )
-  }
-]
-
-var actualSubnetObject = reduce(actualSubnets, {}, (cur, next) => union(cur, next))
-
 var remoteDesktopAppPath = 'C:\\Windows\\System32\\mstsc.exe'
 
 // Define the Windows built-in Remote Desktop application group and its single application
@@ -303,12 +211,6 @@ var remoteDesktopAppGroupInfo = {
 
 //------------------------------- END VARIABLES --------------------------------
 
-/*
- * CREATE THE RESEARCH HUB NETWORK RESOURCES
- */
-
-// LATER: Collapse into a single main network module for the hub
-
 // Create the network resource group
 resource networkRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   #disable-next-line BCP334
@@ -317,85 +219,27 @@ resource networkRg 'Microsoft.Resources/resourceGroups@2022-09-01' = {
   tags: actualTags
 }
 
-// Create the route tables, network security groups, and virtual network
-module networkModule '../shared-modules/networking/main.bicep' = {
-  name: replace(deploymentNameStructure, '{rtype}', 'network')
+module networkModule 'hub-modules/networking/main.bicep' = {
   scope: networkRg
+  name: take(replace(deploymentNameStructure, '{rtype}', 'networking'), 64)
   params: {
-    location: location
+    deployAvdSubnet: !researchVmsAreSessionHosts
     deploymentNameStructure: deploymentNameStructure
-    namingStructure: resourceNamingStructureNoSub
-    subnetDefs: actualSubnetObject
-    vnetAddressPrefixes: [networkAddressSpace]
-
+    deploymentTime: deploymentTime
+    additionalSubnets: additionalSubnets
+    deployBastion: deployBastion
+    deployVpn: deployVpn
+    location: location
+    networkAddressSpace: networkAddressSpace
+    tags: actualTags
+    resourceNamingStructure: resourceNamingStructureNoSub
     customDnsIPs: customDnsIPs
 
-    tags: actualTags
-  }
-}
+    peeringRemoteVNetId: mainHubVNetId
+    remoteVNetFriendlyName: 'MainHub'
+    vnetFriendlyName: 'ResearchHub'
 
-/*
- * Deploy the research hub firewall
- */
-
-module azureFirewallModule 'hub-modules/azureFirewall.bicep' = {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'azfw'), 64)
-  scope: networkRg
-  params: {
-    firewallManagementSubnetId: networkModule.outputs.createdSubnets.AzureFirewallManagementSubnet.id
-    firewallSubnetId: networkModule.outputs.createdSubnets.AzureFirewallSubnet.id
-    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'firewall')
-    tags: actualTags
-    location: location
-  }
-}
-
-/*
- * Optionally, deploy Azure Bastion
- */
-
-module bastionModule 'hub-modules/networking/bastion.bicep' =
-  if (deployBastion) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'bas'), 64)
-    scope: networkRg
-    params: {
-      location: location
-      bastionSubnetId: networkModule.outputs.createdSubnets.AzureBastionSubnet.id
-      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'bas')
-      tags: actualTags
-    }
-  }
-
-/*
- * Optionally, deploy a VPN gateway
- */
-
-module vpnGatewayModule 'hub-modules/networking/vpnGateway.bicep' =
-  if (deployVpn) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'vpngw'), 64)
-    scope: networkRg
-    params: {
-      location: location
-      gatewaySubnetId: networkModule.outputs.createdSubnets.GatewaySubnet.id
-      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'vpn')
-      tags: actualTags
-    }
-  }
-
-/*
- * Deploy all private DNS zones
- */
-
-var dnsZoneDeploymentNameStructure = '{rtype}-${deploymentTime}'
-
-// LATER: Ignore this if peering to a hub virtual network, which should already have these
-module allPrivateDnsZonesModule 'hub-modules/dns/allPrivateDnsZones.bicep' = {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'dns-zones'), 64)
-  scope: networkRg
-  params: {
-    tags: actualTags
-    deploymentNameStructure: dnsZoneDeploymentNameStructure
-    vnetId: networkModule.outputs.vNetId
+    useRemoteGateway: useMainHubGateway
   }
 }
 
@@ -498,7 +342,7 @@ module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bic
 
 // Modify the AVD route table to route traffic through the Azure Firewall
 module avdRouteTableModule '../shared-modules/networking/rt.bicep' =
-  if (!researchVmsAreSessionHosts) {
+  if (!researchVmsAreSessionHosts || isAirlockReviewCentralized) {
     name: take(replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw'), 64)
     scope: networkRg
     params: {
@@ -510,7 +354,7 @@ module avdRouteTableModule '../shared-modules/networking/rt.bicep' =
           properties: {
             addressPrefix: '0.0.0.0/0'
             nextHopType: 'VirtualAppliance'
-            nextHopIpAddress: azureFirewallModule.outputs.fwPrIp
+            nextHopIpAddress: networkModule.outputs.fwPrivateIPAddress
           }
         }
         // TODO: Add routes to bypass FW for updates, Monitor, and conditionally AVD
@@ -529,7 +373,7 @@ resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' =
   }
 
 // Deploy Azure Virtual Desktop resources if AVD is used as jump hosts into the spokes
-module avdJumpBoxModule '../shared-modules/virtualDesktop/main.bicep' =
+module avdJumpBoxModule '../shared-modules/virtualDesktop/avd.bicep' =
   if (!researchVmsAreSessionHosts) {
     scope: avdRg
     name: take(replace(deploymentNameStructure, '{rtype}', 'avd'), 64)
@@ -555,6 +399,7 @@ module avdJumpBoxModule '../shared-modules/virtualDesktop/main.bicep' =
       deployDesktopAppGroup: false
 
       remoteAppApplicationGroupInfo: [remoteDesktopAppGroupInfo]
+      usePrivateLinkForHostPool: usePrivateEndpoints
     }
   }
 
@@ -576,7 +421,7 @@ module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHost
       hostPoolName: avdJumpBoxModule.outputs.hostPoolName
       hostPoolToken: avdJumpBoxModule.outputs.hostPoolRegistrationToken
       logonType: logonType
-      namingStructure: resourceNamingStructure
+      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
       subnetId: networkModule.outputs.createdSubnets.AvdSubnet.id
       vmCount: jumpBoxSessionHostCount
       vmLocalAdminUsername: sessionHostLocalAdminUsername
@@ -592,14 +437,24 @@ module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHost
             adOuPath: adOuPath
           }
         : null
+
+      // Use a non-M365 apps default image for the jump box
+      // All we need is mstsc.exe
+      imageReference: {
+        publisher: 'microsoftwindowsdesktop'
+        offer: 'Windows-11'
+        sku: 'win11-23h2-ent'
+        version: 'latest'
+      }
     }
+    dependsOn: [avdRouteTableModule]
   }
 
 module rolesModule '../module-library/roles.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'roles'), 64)
 }
 
-output hubFirewallIp string = azureFirewallModule.outputs.fwPrIp
+output hubFirewallIp string = networkModule.outputs.fwPrivateIPAddress
 output hubVnetResourceId string = networkModule.outputs.vNetId
 output hubPrivateDnsZonesResourceGroupId string = networkRg.id
 // TODO: Output the resource ID of the remote application group for the remote desktop application

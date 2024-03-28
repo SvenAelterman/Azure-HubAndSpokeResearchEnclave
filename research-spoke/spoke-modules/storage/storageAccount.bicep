@@ -21,8 +21,8 @@ param fileShareNames array
 param containerNames array
 
 // TODO: Update AADDS to EDS (Entra Domain Services)
-@description('The type of identity to use for identity-based authentication for Azure Files. Valid values are: AADDS, or AADKERB. AD to follow later.')
-@allowed([ 'AADDS', 'AADKERB', 'None' ])
+@description('The type of identity to use for identity-based authentication for Azure Files. Valid values are: AADDS, AADKERB, and AD.')
+@allowed(['AADDS', 'AADKERB', 'None'])
 param filesIdentityType string
 
 param debugMode bool = false
@@ -35,7 +35,9 @@ param allowedIpAddresses array = []
 // This will automatically deduplicate
 var actualAllowedIpAddresses = debugMode ? concat(allowedIpAddresses, array(debugRemoteIp)) : allowedIpAddresses
 
-resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
+var useCMK = !empty(uamiId) && !empty(encryptionKeyName) && !empty(keyVaultUri)
+
+resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
   name: storageAccountName
   location: location
   tags: tags
@@ -44,12 +46,16 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
     name: 'Standard_GRS'
   }
   kind: 'StorageV2'
-  identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${uamiId}': {}
-    }
-  }
+  // Assign a user-assigned managed identity to the storage account for CMK access, if provided
+  identity: !empty(uamiId)
+    ? {
+        type: 'UserAssigned'
+        userAssignedIdentities: {
+          '${uamiId}': {}
+        }
+      }
+    : null
+
   properties: {
     // Note: Bypass and Resource Access Rules still take priority over this
     publicNetworkAccess: !debugMode && empty(actualAllowedIpAddresses) ? 'Disabled' : 'Enabled'
@@ -66,34 +72,50 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2021-09-01' = {
       // Only the external-facing storage account needs to allow this Bypass to allow the ADF trigger to start
       bypass: 'AzureServices'
       virtualNetworkRules: []
-      ipRules: [for allowedIp in actualAllowedIpAddresses: {
-        value: allowedIp
-        action: 'Allow'
-      }]
+      ipRules: [
+        for allowedIp in actualAllowedIpAddresses: {
+          value: allowedIp
+          action: 'Allow'
+        }
+      ]
 
       // Note: Bypass and Resource Access Rules still take priority over this
       defaultAction: 'Deny'
     }
 
-    // TODO: Allow for any of three authentication methods: Entra ID, Entra Domain Services, or AD DS
-    azureFilesIdentityBasedAuthentication: (filesIdentityType == 'None') ? null : {
-      directoryServiceOptions: filesIdentityType
-      defaultSharePermission: 'None'
-    }
+    // Allow for any of three authentication methods: Entra ID, Entra Domain Services, or AD DS
+    azureFilesIdentityBasedAuthentication: (filesIdentityType == 'None')
+      ? null
+      : {
+          directoryServiceOptions: filesIdentityType
+          defaultSharePermission: 'None'
+          // TODO: When filesIdentityType == AADDS, specify activeDirectoryProperties
+          /*
+          activeDirectoryProperties: (filesIdentityType == 'AADDS') ? {
+                domainGuid: identityDomainGuid
+                domainName: identityDomainName
+            } : {}
+          */
+        }
 
     supportsHttpsTrafficOnly: true
 
     // TODO: Modify if CMK is not required
     encryption: {
       requireInfrastructureEncryption: true
-      identity: {
-        userAssignedIdentity: uamiId
-      }
-      keySource: 'Microsoft.Keyvault'
-      keyvaultproperties: {
-        keyname: encryptionKeyName
-        keyvaulturi: keyVaultUri
-      }
+
+      identity: useCMK
+        ? {
+            userAssignedIdentity: uamiId
+          }
+        : null
+      keySource: useCMK ? 'Microsoft.Keyvault' : ''
+      keyvaultproperties: useCMK
+        ? {
+            keyname: encryptionKeyName
+            keyvaulturi: keyVaultUri
+          }
+        : null
       services: {
         file: {
           keyType: 'Account'
@@ -123,74 +145,83 @@ resource fileService 'Microsoft.Storage/storageAccounts/fileServices@2022-09-01'
 }
 
 @batchSize(1)
-resource fileShares 'Microsoft.Storage/storageAccounts/fileServices/shares@2022-09-01' = [for shareName in fileShareNames: {
-  name: shareName
-  parent: fileService
-  properties: {
-    enabledProtocols: 'SMB'
+resource fileShares 'Microsoft.Storage/storageAccounts/fileServices/shares@2022-09-01' = [
+  for shareName in fileShareNames: {
+    name: shareName
+    parent: fileService
+    properties: {
+      enabledProtocols: 'SMB'
+    }
   }
-}]
+]
 
 resource blobService 'Microsoft.Storage/storageAccounts/blobServices@2022-09-01' = {
   name: 'default'
   parent: storageAccount
 }
 
-resource containers 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-09-01' = [for containerName in containerNames: {
-  name: containerName
-  parent: blobService
-}]
-
-resource storageAccountLock 'Microsoft.Authorization/locks@2020-05-01' = if (applyDeleteLock) {
-  name: replace(namingStructure, '{rtype}', 'st-lock')
-  scope: storageAccount
-  properties: {
-    level: 'CanNotDelete'
-    notes: 'This storage account potentially contains research data. Delete this lock to delete the storage account after validating that the research data is not subject to retention requirements.'
+resource containers 'Microsoft.Storage/storageAccounts/blobServices/containers@2022-09-01' = [
+  for containerName in containerNames: {
+    name: containerName
+    parent: blobService
   }
-}
+]
+
+resource storageAccountLock 'Microsoft.Authorization/locks@2020-05-01' =
+  if (applyDeleteLock) {
+    name: replace(namingStructure, '{rtype}', 'st-lock')
+    scope: storageAccount
+    properties: {
+      level: 'CanNotDelete'
+      notes: 'This storage account potentially contains research data. Delete this lock to delete the storage account after validating that the research data is not subject to retention requirements.'
+    }
+  }
 
 // Create one private endpoint per specified sub resource (group)
 @batchSize(1)
-resource privateEndpoints 'Microsoft.Network/privateEndpoints@2022-09-01' = [for pe in privateEndpointInfo: {
-  name: replace(namingStructure, '{rtype}', 'st-pe-${pe.subResourceName}')
-  location: location
-  tags: tags
-  properties: {
-    subnet: {
-      id: privateEndpointSubnetId
-    }
-    privateLinkServiceConnections: [
-      {
-        name: replace(namingStructure, '{rtype}', 'st-pe-${pe.subResourceName}')
-        properties: {
-          privateLinkServiceId: storageAccount.id
-          groupIds: [
-            pe.subResourceName
-          ]
-        }
+resource privateEndpoints 'Microsoft.Network/privateEndpoints@2022-09-01' = [
+  for pe in privateEndpointInfo: {
+    name: replace(namingStructure, '{rtype}', 'st-pe-${pe.subResourceName}')
+    location: location
+    tags: tags
+    properties: {
+      subnet: {
+        id: privateEndpointSubnetId
       }
-    ]
+      privateLinkServiceConnections: [
+        {
+          name: replace(namingStructure, '{rtype}', 'st-pe-${pe.subResourceName}')
+          properties: {
+            privateLinkServiceId: storageAccount.id
+            groupIds: [
+              pe.subResourceName
+            ]
+          }
+        }
+      ]
+    }
   }
-}]
+]
 
 // Register the private endpoint in the respective private DNS zone
 @batchSize(1)
-resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = [for (pe, i) in privateEndpointInfo: {
-  name: 'default'
-  parent: privateEndpoints[i]
-  properties: {
-    privateDnsZoneConfigs: [
-      {
-        // Replace . with - because the config name doesn't suppport .
-        name: replace(pe.dnsZoneName, '.', '-')
-        properties: {
-          privateDnsZoneId: pe.dnsZoneId
+resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = [
+  for (pe, i) in privateEndpointInfo: {
+    name: 'default'
+    parent: privateEndpoints[i]
+    properties: {
+      privateDnsZoneConfigs: [
+        {
+          // Replace . with - because the config name doesn't suppport .
+          name: replace(pe.dnsZoneName, '.', '-')
+          properties: {
+            privateDnsZoneId: pe.dnsZoneId
+          }
         }
-      }
-    ]
+      ]
+    }
   }
-}]
+]
 
 output id string = storageAccount.id
 output name string = storageAccount.name
