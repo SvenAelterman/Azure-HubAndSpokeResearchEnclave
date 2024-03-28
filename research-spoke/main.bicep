@@ -67,10 +67,7 @@ param sessionHostLocalAdminUsername string
 @secure()
 param sessionHostLocalAdminPassword string
 @description('Specifies if logons to virtual machines should use AD or Entra ID.')
-@allowed([
-  'ad'
-  'entraID'
-])
+@allowed(['ad', 'entraID'])
 param logonType string
 @description('The username of a domain user or service account to use to join the Active Directory domain. Required if using AD join.')
 @secure()
@@ -78,6 +75,9 @@ param domainJoinUsername string = ''
 @description('The password of the domain user or service account to use to join the Active Directory domain. Required if using AD join.')
 @secure()
 param domainJoinPassword string = ''
+
+@allowed(['AADKERB', 'AADDS', 'None'])
+param filesIdentityType string
 
 @description('The fully qualified DNS name of the Active Directory domain to join. Required if using AD join.')
 param adDomainFqdn string = ''
@@ -414,11 +414,12 @@ module storageModule './spoke-modules/storage/main.bicep' = {
     ]
     fileShareNames: [
       fileShareNames.shared
+      // TODO: Only when research VMs are session hosts
       fileShareNames.userProfiles
     ]
 
-    // TODO: This needs additional refinement, including specifying the domain info (if possible)
-    filesIdentityType: (logonType == 'entraID') ? 'AADKERB' : 'AADDS'
+    // TODO: This needs additional refinement: specifying the domain info for AADKERB (guid, name)
+    filesIdentityType: filesIdentityType
   }
 }
 

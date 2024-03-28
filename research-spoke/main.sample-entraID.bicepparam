@@ -17,12 +17,14 @@ param environment = 'dev'
 param tags = {}
 param sequence = 1
 param namingConvention = '{workloadName}-{subWorkloadName}-{env}-{rtype}-{loc}-{seq}'
-param networkAddressSpaces = [ '10.27.${sequence - 1}.0/24' ]
+param networkAddressSpaces = ['10.27.${sequence - 1}.0/24']
 param customDnsIps = []
 
 param researcherEntraIdObjectId = ''
 param adminEntraIdObjectId = ''
 param logonType = 'entraID'
+
+param filesIdentityType = logonType == 'entraID' ? 'AADKERB' : 'None'
 
 param debugMode = true
 param debugRemoteIp = ''
@@ -35,8 +37,18 @@ param desktopAppGroupFriendlyName = 'Research Spoke: ${workloadName} ${sequence}
 param workspaceFriendlyName = 'Research Spoke: ${workloadName} ${sequence}'
 param useSessionHostAsResearchVm = true
 param sessionHostCount = 1
-param sessionHostLocalAdminUsername = az.getSecret(keyVaultSubscriptionId, keyVaultResourceGroupName, keyVaultName, 'uark-local-username')
-param sessionHostLocalAdminPassword = az.getSecret(keyVaultSubscriptionId, keyVaultResourceGroupName, keyVaultName, 'uark-local-password')
+param sessionHostLocalAdminUsername = az.getSecret(
+  keyVaultSubscriptionId,
+  keyVaultResourceGroupName,
+  keyVaultName,
+  'uark-local-username'
+)
+param sessionHostLocalAdminPassword = az.getSecret(
+  keyVaultSubscriptionId,
+  keyVaultResourceGroupName,
+  keyVaultName,
+  'uark-local-password'
+)
 param sessionHostNamePrefix = 'vm-${workloadName}-${sequence}'
 param sessionHostSize = 'Standard_D2as_v5'
 
