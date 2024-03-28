@@ -564,7 +564,7 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
     debugMode: debugMode
     debugRemoteIp: debugRemoteIp
 
-    filesIdentityType: (logonType == 'entraID') ? 'AADKERB' : 'AADDS'
+    filesIdentityType: filesIdentityType
   }
 }
 
