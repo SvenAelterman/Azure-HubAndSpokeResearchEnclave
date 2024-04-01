@@ -17,6 +17,7 @@ param additionalSubnets array
 param peeringRemoteVNetId string
 param remoteVNetFriendlyName string = ''
 param vnetFriendlyName string = ''
+param privateDnsZonesResourceGroupId string = ''
 
 param location string
 param tags object
@@ -197,15 +198,16 @@ module vpnGatewayModule './vpnGateway.bicep' =
 
 var dnsZoneDeploymentNameStructure = '{rtype}-${deploymentTime}'
 
-// LATER: Ignore this if peering to a hub virtual network, which should already have these
-module allPrivateDnsZonesModule '../dns/allPrivateDnsZones.bicep' = {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'dns-zones'), 64)
-  params: {
-    tags: tags
-    deploymentNameStructure: dnsZoneDeploymentNameStructure
-    vnetId: networkModule.outputs.vNetId
+module allPrivateDnsZonesModule '../dns/allPrivateDnsZones.bicep' =
+  // Do not deploy Private Link's Private DNS zones if peering to a hub virtual network, which should already have these
+  if (empty(privateDnsZonesResourceGroupId)) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'dns-zones'), 64)
+    params: {
+      tags: tags
+      deploymentNameStructure: dnsZoneDeploymentNameStructure
+      vnetId: networkModule.outputs.vNetId
+    }
   }
-}
 
 output createdSubnets object = networkModule.outputs.createdSubnets
 output vNetId string = networkModule.outputs.vNetId
