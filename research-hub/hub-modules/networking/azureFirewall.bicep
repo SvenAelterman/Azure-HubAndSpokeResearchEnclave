@@ -1,17 +1,24 @@
 param firewallSubnetId string
-param firewallManagementSubnetId string
+@description('The Azure resource ID of the management subnet for a Basic firewall or for a firewall with forced tunneling.')
+param firewallManagementSubnetId string = ''
+
+param forcedTunneling bool = false
+
 param namingStructure string
 param tags object
 
 @allowed([
   'Basic'
+  'Standard'
+  'Premium'
 ])
 param firewallTier string = 'Basic'
 
 param location string = resourceGroup().location
 
-// Basic Firewall requires two, unsure about other tiers
-var publicIpCount = 2
+var createManagementIPConfiguration = (firewallTier == 'Basic' || forcedTunneling)
+// Basic Firewall and not forced tunneling require two
+var publicIpCount = (firewallTier == 'Basic' && !forcedTunneling) ? 2 : 1
 
 // Create the public IP address(es) for the Firewall
 resource firewallPublicIps 'Microsoft.Network/publicIPAddresses@2022-09-01' = [
@@ -37,6 +44,13 @@ resource firewallPolicy 'Microsoft.Network/firewallPolicies@2022-01-01' = {
     sku: {
       tier: firewallTier
     }
+    // Do not SNAT when in forced tunneling mode
+    snat: forcedTunneling
+      ? {
+          autoLearnPrivateRanges: 'Disabled'
+          privateRanges: ['0.0.0.0/0']
+        }
+      : {}
   }
   tags: tags
 }
@@ -68,7 +82,7 @@ var defaultRuleCollectionGroups = {
   }
 }
 
-// TODO: Divide into optional rule collections: AzurePlatform, AVDRDWeb (rename!), ResearchDataSources (?)
+// LATER: Divide into optional rule collections: AzurePlatform, AVDRDWeb (rename!), ResearchDataSources (?)
 
 @batchSize(1) // Do not process more than one rule collection group at a time
 resource ruleCollectionGroups 'Microsoft.Network/firewallPolicies/ruleCollectionGroups@2022-07-01' = [
@@ -90,31 +104,39 @@ resource firewall 'Microsoft.Network/azureFirewalls@2022-01-01' = {
   properties: {
     ipConfigurations: [
       {
-        name: firewallPublicIps[0].name
+        name: replace(namingStructure, '{rtype}', 'fwip')
         properties: {
           subnet: {
             id: firewallSubnetId
           }
-          publicIPAddress: {
-            id: firewallPublicIps[0].id
-          }
+          // If forced tunneling is enabled, the public IP address is not needed
+          publicIPAddress: !forcedTunneling
+            ? {
+                id: firewallPublicIps[0].id
+              }
+            : null
         }
       }
     ]
-    managementIpConfiguration: {
-      name: replace(namingStructure, '{rtype}', 'fwmgt')
-      properties: {
-        publicIPAddress: {
-          id: firewallPublicIps[1].id
+    managementIpConfiguration: createManagementIPConfiguration
+      ? {
+          name: replace(namingStructure, '{rtype}', 'fwmgtip')
+          properties: {
+            publicIPAddress: {
+              // In forced tunneling mode, there is only one public IP address, for the Management interface
+              id: forcedTunneling ? firewallPublicIps[0].id : firewallPublicIps[1].id
+            }
+            subnet: {
+              id: firewallManagementSubnetId
+            }
+          }
         }
-        subnet: {
-          id: firewallManagementSubnetId
-        }
-      }
-    }
+      : null
+
     firewallPolicy: {
       id: firewallPolicy.id
     }
+
     sku: {
       name: 'AZFW_VNet'
       tier: firewallTier

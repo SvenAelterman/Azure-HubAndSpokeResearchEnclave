@@ -6,6 +6,7 @@ param networkAddressSpace string
 param customDnsIPs array
 
 param deployAvdSubnet bool
+param deployAirlockSubnet bool
 param deployBastion bool
 @description('Mutually exclusive with useRemoteGateway.')
 param deployVpn bool
@@ -19,6 +20,17 @@ param remoteVNetFriendlyName string = ''
 param vnetFriendlyName string = ''
 param privateDnsZonesResourceGroupId string = ''
 
+param firewallForcedTunnel bool = false
+@description('The IP address of the NVA to route traffic through when using forced tunneling.')
+param firewallForcedTunnelNvaIP string = ''
+
+@allowed([
+  'Basic'
+  'Standard'
+  'Premium'
+])
+param firewallTier string = 'Basic'
+
 param location string
 param tags object
 param deploymentTime string
@@ -28,6 +40,11 @@ param resourceNamingStructure string
 /*
  * DEFINE THE RESEARCH HUB VIRTUAL NETWORK'S SUBNETS
  */
+
+var createManagementIPConfiguration = (firewallTier == 'Basic' || firewallForcedTunnel)
+
+// TODO: Replace the {{nvaIPAddress}} placeholder with the upstream NVA's IP address
+var AzureFirewallSubnetRoutes = firewallForcedTunnel ? [] : loadJsonContent('./routes/AzureFirewallNormal.jsonc')
 
 // Variable to hold the subnets that are always required, regardless of optional components
 var requiredSubnets = {
@@ -41,37 +58,49 @@ var requiredSubnets = {
   }
   AzureFirewallSubnet: {
     serviceEndpoints: []
-    routes: loadJsonContent('../../../shared-modules/networking/routes/AzureFirewall.json')
+    routes: AzureFirewallSubnetRoutes
     //securityRules: [] Azure Firewall does not support NSGs on its subnets
     delegation: ''
     order: 0
     subnetCidr: 26
   }
-  // TODO: The need for this subnet depends on the Firewall SKU and forced tunneling
-  AzureFirewallManagementSubnet: {
-    serviceEndpoints: []
-    routes: loadJsonContent('../../../shared-modules/networking/routes/AzureFirewall.json')
-    //securityRules: [] Azure Firewall does not support NSGs on its subnets
-    delegation: ''
-    order: 1
-    subnetCidr: 26
-  }
-  AirlockSubnet: {
-    serviceEndpoints: []
-    routes: [] // Routes through the firewall will be added later
-    securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
-    delegation: ''
-    order: 5 // The fourth /27-sized subnet
-    subnetCidr: 27 // There will never be many airlock review virtual machines taking up addresses
-  }
 }
+
+var AzureFirewallManagementSubnet = createManagementIPConfiguration
+  ? {
+      AzureFirewallManagementSubnet: {
+        serviceEndpoints: []
+        // A default route to the Internet on the Management subnet is required for Azure Firewall to function.
+        // Adding an explicit route table to "document" and demonstrate the requirement.
+        routes: loadJsonContent('./routes/AzureFirewallNormal.jsonc')
+        //securityRules: [] Azure Firewall does not support NSGs on its subnets
+        delegation: ''
+        order: 1
+        subnetCidr: 26
+      }
+    }
+  : {}
+
+var AirlockSubnet = deployAirlockSubnet
+  ? {
+      AirlockSubnet: {
+        serviceEndpoints: []
+        // Route 
+        routes: [] // Routes through the firewall will be added later
+        securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
+        delegation: ''
+        order: 5 // The fourth /27-sized subnet
+        subnetCidr: 27 // There will never be many airlock review virtual machines taking up addresses
+      }
+    }
+  : {}
 
 var AzureBastionSubnet = deployBastion
   ? {
       AzureBastionSubnet: {
         serviceEndpoints: []
         //routes: [] Bastion doesn't support routes
-        securityRules: loadJsonContent('../../hub-modules/networking/securityRules/bastion.jsonc')
+        securityRules: loadJsonContent('./securityRules/bastion.jsonc')
         delegation: ''
         order: 3 // The first /26, in the first /24 block
         subnetCidr: 26 // Minimum for AzureBastionSubnet
@@ -105,7 +134,14 @@ var AvdSubnet = deployAvdSubnet
   : {}
 
 // Combine all subnets into a single object
-var subnets = union(requiredSubnets, AzureBastionSubnet, GatewaySubnet, AvdSubnet)
+var subnets = union(
+  requiredSubnets,
+  AzureBastionSubnet,
+  GatewaySubnet,
+  AvdSubnet,
+  AirlockSubnet,
+  AzureFirewallManagementSubnet
+)
 
 /*
  * Calculate the subnet addresses
@@ -157,10 +193,66 @@ module azureFirewallModule './azureFirewall.bicep' = {
     firewallManagementSubnetId: networkModule.outputs.createdSubnets.AzureFirewallManagementSubnet.id
     firewallSubnetId: networkModule.outputs.createdSubnets.AzureFirewallSubnet.id
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'firewall')
+    firewallTier: firewallTier
     tags: tags
     location: location
+    forcedTunneling: firewallForcedTunnel
   }
 }
+
+// When forced tunneling is enabled, add a route to the NVA on the FirewallSubnet
+module firewallRouteTableModule '../../../shared-modules/networking/rt.bicep' =
+  if (firewallForcedTunnel) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'rt-fw-nva'), 64)
+    params: {
+      location: location
+
+      routes: json(replace(
+        loadTextContent('./routes/AzureFirewallForcedTunnel.jsonc'),
+        '{{nvaIPAddress}}',
+        firewallForcedTunnelNvaIP
+      ))
+
+      rtName: networkModule.outputs.createdSubnets.AzureFirewallSubnet.routeTableName
+      tags: tags
+    }
+  }
+
+// Modify the AVD route table to route traffic through the Azure Firewall
+module avdRouteTableModule '../../../shared-modules/networking/rt.bicep' =
+  if (deployAvdSubnet) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw'), 64)
+    params: {
+      location: location
+
+      routes: json(replace(
+        loadTextContent('../../../shared-modules/networking/routes/DefaultToNVA.jsonc'),
+        '{{nvaIPAddress}}',
+        azureFirewallModule.outputs.fwPrIp
+      ))
+
+      rtName: networkModule.outputs.createdSubnets.AvdSubnet.routeTableName
+      tags: tags
+    }
+  }
+
+// Modify the Airlock route table to route traffic through the Azure Firewall
+module airlockRouteTableModule '../../../shared-modules/networking/rt.bicep' =
+  if (deployAirlockSubnet) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'rt-airlock-fw'), 64)
+    params: {
+      location: location
+
+      routes: json(replace(
+        loadTextContent('../../../shared-modules/networking/routes/DefaultToNVA.jsonc'),
+        '{{nvaIPAddress}}',
+        azureFirewallModule.outputs.fwPrIp
+      ))
+
+      rtName: networkModule.outputs.createdSubnets.AirlockSubnet.routeTableName
+      tags: tags
+    }
+  }
 
 /*
  * Optionally, deploy Azure Bastion
@@ -208,6 +300,8 @@ module allPrivateDnsZonesModule '../dns/allPrivateDnsZones.bicep' =
       vnetId: networkModule.outputs.vNetId
     }
   }
+
+// TODO: Fix the route tables when the firewall's IP address is known
 
 output createdSubnets object = networkModule.outputs.createdSubnets
 output vNetId string = networkModule.outputs.vNetId

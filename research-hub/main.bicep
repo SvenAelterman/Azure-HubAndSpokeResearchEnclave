@@ -112,9 +112,8 @@ param useMainHubGateway bool = true
 @description('The Azure resource ID of the resource group where existing Private Link DNS zones are located. All required Private DNS Zones must already exist.')
 param existingPrivateDnsZonesResourceGroupId string = ''
 
-// TODO: Add support for forced tunneling, including adding entries to route tables for routing to the main hub's address space via Az FW
+// Support for forced tunneling, including adding entries to route tables for routing to the main hub's address space via Az FW
 @description('The IP address of the main hub\'s network virtual appliance (NVA).')
-#disable-next-line no-unused-params // LATER: Future use
 param mainHubNvaIp string = ''
 
 /*
@@ -228,11 +227,13 @@ module networkModule 'hub-modules/networking/main.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'networking'), 64)
   params: {
     deployAvdSubnet: !researchVmsAreSessionHosts
+    deployAirlockSubnet: isAirlockReviewCentralized
+    deployBastion: deployBastion
+    deployVpn: deployVpn
+
     deploymentNameStructure: deploymentNameStructure
     deploymentTime: deploymentTime
     additionalSubnets: additionalSubnets
-    deployBastion: deployBastion
-    deployVpn: deployVpn
     location: location
     networkAddressSpace: networkAddressSpace
     tags: actualTags
@@ -246,6 +247,9 @@ module networkModule 'hub-modules/networking/main.bicep' = {
     useRemoteGateway: useMainHubGateway
 
     privateDnsZonesResourceGroupId: existingPrivateDnsZonesResourceGroupId
+
+    firewallForcedTunnel: !empty(mainHubNvaIp)
+    firewallForcedTunnelNvaIP: mainHubNvaIp
   }
 }
 
@@ -346,30 +350,7 @@ module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bic
  * Deploy Azure Virtual Desktop
  */
 
-// Modify the AVD route table to route traffic through the Azure Firewall
-module avdRouteTableModule '../shared-modules/networking/rt.bicep' =
-  if (!researchVmsAreSessionHosts || isAirlockReviewCentralized) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw'), 64)
-    scope: networkRg
-    params: {
-      location: location
-      // TODO: Move routes to JSON file and replace tokens for FW IP
-      routes: [
-        {
-          name: 'Internet_via_Firewall'
-          properties: {
-            addressPrefix: '0.0.0.0/0'
-            nextHopType: 'VirtualAppliance'
-            nextHopIpAddress: networkModule.outputs.fwPrivateIPAddress
-          }
-        }
-        // TODO: Add routes to bypass FW for updates, Monitor, and conditionally AVD
-      ]
-      rtName: networkModule.outputs.createdSubnets.AvdSubnet.routeTableName
-      tags: actualTags
-    }
-  }
-
+// If needed, create the AVD resource group
 resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' =
   if (!researchVmsAreSessionHosts) {
     #disable-next-line BCP334
@@ -463,7 +444,6 @@ module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHost
         version: 'latest'
       }
     }
-    dependsOn: [avdRouteTableModule]
   }
 
 module rolesModule '../module-library/roles.bicep' = {
