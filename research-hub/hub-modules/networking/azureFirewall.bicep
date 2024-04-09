@@ -17,7 +17,7 @@ param firewallTier string = 'Basic'
 param location string = resourceGroup().location
 
 var createManagementIPConfiguration = (firewallTier == 'Basic' || forcedTunneling)
-// Basic Firewall and not forced tunneling require two
+// Basic Firewall AND not forced tunneling requires two public IP addresses
 var publicIpCount = (firewallTier == 'Basic' && !forcedTunneling) ? 2 : 1
 
 // Create the public IP address(es) for the Firewall
@@ -96,6 +96,10 @@ resource ruleCollectionGroups 'Microsoft.Network/firewallPolicies/ruleCollection
   }
 ]
 
+// In forced tunneling mode, there is only one public IP address, for the Management interface
+// (Cannot reference the public IP address directly, as ARM wants both 0 and 1 index to exist when doing so)
+var managementIPConfigPublicIPIndex = forcedTunneling ? 0 : 1
+
 // Create Azure Firewall resource
 resource firewall 'Microsoft.Network/azureFirewalls@2022-01-01' = {
   name: replace(namingStructure, '{rtype}', 'fw')
@@ -123,8 +127,7 @@ resource firewall 'Microsoft.Network/azureFirewalls@2022-01-01' = {
           name: replace(namingStructure, '{rtype}', 'fwmgtip')
           properties: {
             publicIPAddress: {
-              // In forced tunneling mode, there is only one public IP address, for the Management interface
-              id: forcedTunneling ? firewallPublicIps[0].id : firewallPublicIps[1].id
+              id: firewallPublicIps[managementIPConfigPublicIPIndex].id
             }
             subnet: {
               id: firewallManagementSubnetId
