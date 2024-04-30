@@ -148,6 +148,7 @@ module uamiProjectStorageRoleAssignmentModule '../../../module-library/roleAssig
     principalId: uamiModule.outputs.principalId
     roleDefinitionId: roles.StorageAccountContributor
     storageAccountName: privateStorageAccount.name
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -185,6 +186,7 @@ module adfPrjKvRoleAssignmentModule '../../../module-library/roleAssignments/rol
     kvName: keyVault.name
     principalId: adfModule.outputs.principalId
     roleDefinitionId: roles.KeyVaultSecretsUser
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -275,8 +277,9 @@ module publicStContainerRbacModule '../../../module-library/roleAssignments/role
     params: {
       containerName: containerName
       principalId: researcherAadObjectId
-      roleDefinitionId: roles['Storage Blob Data Contributor']
+      roleDefinitionId: roles.StorageBlobDataContributor
       storageAccountName: publicStorageAccountModule.outputs.name
+      // Do not specify a principalType here because we don't know if researcherAadObjectId is a user or a group
     }
   }
 ]
@@ -286,8 +289,9 @@ module adfPublicStorageAccountRbacModule '../../../module-library/roleAssignment
   name: replace(deploymentNameStructure, '{rtype}', 'adf-pub-role')
   params: {
     principalId: adfModule.outputs.principalId
-    roleDefinitionId: roles['Storage Blob Data Contributor']
+    roleDefinitionId: roles.StorageBlobDataContributor
     storageAccountName: publicStorageAccountModule.outputs.name
+    principalType: 'ServicePrincipal'
   }
 }
 

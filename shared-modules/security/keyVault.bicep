@@ -67,6 +67,7 @@ module keyVaultAdminRbac '../../module-library/roleAssignments/roleAssignment-kv
       kvName: keyVault.name
       principalId: admin
       roleDefinitionId: roles.KeyVaultAdministrator
+      // Do not specify a principalType here because we don't know if the principal is a user or a group
     }
   }
 ]

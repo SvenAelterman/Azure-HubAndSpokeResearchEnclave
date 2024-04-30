@@ -2,6 +2,7 @@ param kvName string
 param principalId string
 param roleDefinitionId string
 param secretName string
+param principalType string = ''
 
 resource kv 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: kvName
@@ -18,5 +19,6 @@ resource roleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   properties: {
     roleDefinitionId: roleDefinitionId
     principalId: principalId
+    principalType: !empty(principalType) ? principalType : null
   }
 }

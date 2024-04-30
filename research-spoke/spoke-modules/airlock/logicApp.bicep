@@ -24,7 +24,9 @@ param deploymentNameStructure string
 param subWorkloadName string
 param tags object = {}
 
-var baseName = !empty(subWorkloadName) ? replace(namingStructure, '{subWorkloadName}', subWorkloadName) : replace(namingStructure, '-{subWorkloadName}', '')
+var baseName = !empty(subWorkloadName)
+  ? replace(namingStructure, '{subWorkloadName}', subWorkloadName)
+  : replace(namingStructure, '-{subWorkloadName}', '')
 
 // Project's private storage account
 resource prjStorageAcct 'Microsoft.Storage/storageAccounts@2022-09-01' existing = {
@@ -81,15 +83,17 @@ resource emailConnection 'Microsoft.Web/connections@2018-07-01-preview' = {
       id: subscriptionResourceId('Microsoft.Web/locations/managedApis', location, 'office365')
     }
     // This parameterValueSet is only supported when deploying to Azure Gov
-    parameterValueSet: isAzureUSGov ? {
-      // Per https://learn.microsoft.com/en-us/azure/backup/backup-reports-email?tabs=arm
-      name: 'oauthGccHigh'
-      values: {
-        token: {
-          value: 'https://logic-apis-${location}.consent.azure-apihub.us/redirect'
+    parameterValueSet: isAzureUSGov
+      ? {
+          // Per https://learn.microsoft.com/en-us/azure/backup/backup-reports-email?tabs=arm
+          name: 'oauthGccHigh'
+          values: {
+            token: {
+              value: 'https://logic-apis-${location}.consent.azure-apihub.us/redirect'
+            }
+          }
         }
-      }
-    } : null
+      : null
   }
   tags: tags
 }
@@ -183,6 +187,7 @@ module logicAppAdfRbacModule '../../../module-library/roleAssignments/roleAssign
     adfName: adf.name
     principalId: logicApp.identity.principalId
     roleDefinitionId: roles.DataFactoryContributor
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -193,5 +198,6 @@ module logicAppPrivateStRbacModule '../../../module-library/roleAssignments/role
     principalId: logicApp.identity.principalId
     roleDefinitionId: roles.StorageBlobDataContributor
     storageAccountName: prjStorageAcct.name
+    principalType: 'ServicePrincipal'
   }
 }

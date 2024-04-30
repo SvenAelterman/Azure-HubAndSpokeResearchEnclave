@@ -23,7 +23,9 @@ param pipelineNameAdls2Files string = 'pipe-data_move-adls_to_files'
 param pipelineNameFilesToAdls string = 'pipe-data_move-files_to_adls'
 param debugMode bool
 
-var baseName = !empty(subWorkloadName) ? replace(namingStructure, '{subWorkloadName}', subWorkloadName) : replace(namingStructure, '-{subWorkloadName}', '')
+var baseName = !empty(subWorkloadName)
+  ? replace(namingStructure, '{subWorkloadName}', subWorkloadName)
+  : replace(namingStructure, '-{subWorkloadName}', '')
 
 var managedVnetName = 'default'
 var autoResolveIntegrationRuntimeName = 'AutoResolveIntegrationRuntime'
@@ -122,6 +124,7 @@ module adfKeyVaultRoleAssignmentModule '../../../module-library/roleAssignments/
     roleDefinitionId: roles.KeyVaultSecretsUser
     kvName: keyVault.name
     secretName: privateStorageAccountConnStringSecretName
+    principalType: 'ServicePrincipal'
   }
 }
 
