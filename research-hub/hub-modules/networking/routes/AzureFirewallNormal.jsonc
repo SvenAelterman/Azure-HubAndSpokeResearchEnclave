@@ -1,6 +1,6 @@
 [
     {
-        "name": "Internet-Direct",
+        "name": "InternetRoute",
         "properties": {
             "nextHopType": "Internet",
             "addressPrefix": "0.0.0.0/0"

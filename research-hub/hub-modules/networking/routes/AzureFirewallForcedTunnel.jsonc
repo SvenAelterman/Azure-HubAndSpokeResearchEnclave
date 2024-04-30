@@ -1,0 +1,10 @@
+[
+  {
+    "name": "ForcedTunnelRoute",
+    "properties": {
+      "addressPrefix": "0.0.0.0/0",
+      "nextHopType": "VirtualAppliance",
+      "nextHopIpAddress": "{{nvaIPAddress}}"
+    }
+  }
+]

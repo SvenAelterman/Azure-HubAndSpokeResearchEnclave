@@ -69,7 +69,7 @@ param sessionHostLocalAdminPassword string
 @description('Specifies if logons to virtual machines should use AD or Entra ID.')
 @allowed(['ad', 'entraID'])
 param logonType string
-@description('The username of a domain user or service account to use to join the Active Directory domain. Required if using AD join.')
+@description('The username of a domain user or service account to use to join the Active Directory domain. Use UPN notation. Required if using AD join.')
 @secure()
 param domainJoinUsername string = ''
 @description('The password of the domain user or service account to use to join the Active Directory domain. Required if using AD join.')

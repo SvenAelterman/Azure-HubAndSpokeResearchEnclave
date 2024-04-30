@@ -67,23 +67,51 @@ var customRdpProperty = '${defaultRdpProperties}${entraIDJoinCustomRdpProperties
  * RESOURCES
  */
 
-resource hostPool 'Microsoft.DesktopVirtualization/hostPools@2020-11-10-preview' = {
+resource hostPool 'Microsoft.DesktopVirtualization/hostPools@2023-09-05' = {
   name: replace(namingStructure, '{rtype}', 'hp')
   location: location
   properties: {
     hostPoolType: 'Pooled'
     loadBalancerType: 'BreadthFirst'
-    preferredAppGroupType: 'Desktop'
+    preferredAppGroupType: deployDesktopAppGroup ? 'Desktop' : 'RailApplications'
     customRdpProperty: customRdpProperty
     registrationInfo: {
       registrationTokenOperation: 'Update'
       expirationTime: dateTimeAdd(deploymentTime, 'PT5H')
     }
     maxSessionLimit: 25
-    // TODO: Add Start VM On Connect configuration (role config!)
+
+    publicNetworkAccess: usePrivateLinkForHostPool ? 'EnabledForClientsOnly' : 'Enabled'
+
+    // LATER: Add Start VM On Connect configuration (role config!)
   }
   tags: tags
 }
+
+// LATER: Add support for session host configuration data
+// resource hostPoolConfigurations 'Microsoft.DesktopVirtualization/hostPools/sessionHostConfigurations@2024-01-16-preview' = {
+//   name: 
+//   properties: {
+//     diskInfo: {
+//       type: 
+//     }
+//     domainInfo: {
+//       joinType: 
+//     }
+//     imageInfo: {
+//       type:  
+//     }
+//     networkInfo: {
+//       subnetId: 
+//     }
+//     vmAdminCredentials: {
+//       passwordKeyVaultSecretUri: 
+//       usernameKeyVaultSecretUri: 
+//     }
+//     vmNamePrefix: 
+//     vmSizeId: 
+//   }
+// }
 
 resource desktopApplicationGroup 'Microsoft.DesktopVirtualization/applicationGroups@2023-09-05' =
   if (deployDesktopAppGroup) {
@@ -130,6 +158,7 @@ resource dagUserRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-
     }
   }
 
+// TODO: Role assignment for admins required?
 // resource dagAdminRoleAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
 //   for appGroup in remoteAppApplicationGroupInfo: if (!empty(adminObjectId)) {
 //     name: guid(
