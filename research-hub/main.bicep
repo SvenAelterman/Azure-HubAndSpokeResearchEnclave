@@ -242,7 +242,6 @@ module networkModule 'hub-modules/networking/main.bicep' = {
 
     peeringRemoteVNetId: mainHubVNetId
     remoteVNetFriendlyName: 'MainHub'
-    vnetFriendlyName: 'ResearchHub'
 
     useRemoteGateway: useMainHubGateway
 
@@ -308,6 +307,7 @@ module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bic
     kvName: keyVaultModule.outputs.keyVaultName
     principalId: uamiModule.outputs.principalId
     roleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
+    principalType: 'ServicePrincipal'
   }
 }
 

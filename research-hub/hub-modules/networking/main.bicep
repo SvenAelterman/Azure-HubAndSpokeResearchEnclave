@@ -172,12 +172,13 @@ module networkModule '../../../shared-modules/networking/main.bicep' = {
     subnetDefs: actualSubnetObject
     vnetAddressPrefixes: [networkAddressSpace]
 
+    additionalSubnets: additionalSubnets
+
     customDnsIPs: customDnsIPs
 
     tags: tags
 
     remoteVNetResourceId: peeringRemoteVNetId
-    additionalSubnets: additionalSubnets
     remoteVNetFriendlyName: remoteVNetFriendlyName
     vnetFriendlyName: vnetFriendlyName
   }

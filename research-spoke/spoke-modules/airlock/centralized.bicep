@@ -44,6 +44,7 @@ module uamiAirlockStorageRoleAssignmentModule '../../../module-library/roleAssig
     principalId: spokeUamiPrincipalId
     roleDefinitionId: roles.StorageAccountContributor
     storageAccountName: centralAirlockStorageAccountName
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -57,7 +58,12 @@ module adfHubKvRoleAssignmentModule '../../../module-library/roleAssignments/rol
     // Even though the hub role definition ID is the same, it leads to a conflict because the roleDefinitionId is the full resource ID, including subscription ID
     // Which means that it doesn't get detected correctly as already existing.
     // This role definition ID is for the Key Vault Secrets User role.
-    roleDefinitionId: subscriptionResourceId(centralAirlockSubscriptionId, 'Microsoft.Authorization/roleDefinitions', '4633458b-17de-408a-b874-0445c86b69e6')
+    roleDefinitionId: subscriptionResourceId(
+      centralAirlockSubscriptionId,
+      'Microsoft.Authorization/roleDefinitions',
+      '4633458b-17de-408a-b874-0445c86b69e6'
+    )
+    principalType: 'ServicePrincipal'
   }
 }
 

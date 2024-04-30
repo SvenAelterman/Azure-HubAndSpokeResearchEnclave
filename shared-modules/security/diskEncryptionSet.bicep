@@ -56,6 +56,7 @@ module kvRbacModule '../../module-library/roleAssignments/roleAssignment-kv.bice
       kvName: keyVaultName
       principalId: diskEncryptionSet.identity.principalId
       roleDefinitionId: kvRoleDefinitionId
+      principalType: 'ServicePrincipal'
     }
   }
 

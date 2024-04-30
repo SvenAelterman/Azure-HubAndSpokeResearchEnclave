@@ -359,6 +359,7 @@ module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bic
     kvName: keyVaultModule.outputs.keyVaultName
     principalId: uamiModule.outputs.principalId
     roleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -432,6 +433,7 @@ module privateStContainerRbacModule '../module-library/roleAssignments/roleAssig
     principalId: researcherEntraIdObjectId
     roleDefinitionId: rolesModule.outputs.roles.StorageBlobDataContributor
     storageAccountName: storageModule.outputs.storageAccountName
+    // Do not specify principalType here because we don't know if researcherEntraIdObjectId is a user or a group
   }
 }
 
@@ -444,6 +446,7 @@ module privateStFileShareRbacModule '../module-library/roleAssignments/roleAssig
       principalId: researcherEntraIdObjectId
       roleDefinitionId: rolesModule.outputs.roles.StorageFileDataSMBShareContributor
       storageAccountName: storageModule.outputs.storageAccountName
+      // Do not specify principalType here because we don't know if researcherEntraIdObjectId is a user or a group
     }
   }
 ]
