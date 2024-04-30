@@ -93,16 +93,17 @@ module vNetModule 'vnet.bicep' = {
 }
 
 // Create peering to hub, if specified
-module peeringModule 'networkPeering.bicep' = if (!empty(remoteVNetResourceId)) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'peering'), 64)
-  params: {
-    deploymentNameStructure: deploymentNameStructure
-    vnet1ResourceId: remoteVNetResourceId
-    vnet2ResourceId: vNetModule.outputs.vNetId
-    vnet1FriendlyName: vnetFriendlyName
-    vnet2FriendlyName: remoteVNetFriendlyName
+module peeringModule 'networkPeering.bicep' =
+  if (!empty(remoteVNetResourceId)) {
+    name: take(replace(deploymentNameStructure, '{rtype}', 'peering'), 64)
+    params: {
+      deploymentNameStructure: deploymentNameStructure
+      vnet1ResourceId: remoteVNetResourceId
+      vnet2ResourceId: vNetModule.outputs.vNetId
+      vnet1FriendlyName: remoteVNetFriendlyName
+      vnet2FriendlyName: vnetFriendlyName
+    }
   }
-}
 
 @description('The properties of the subnets in the created virtual network.')
 output createdSubnets object = reduce(vNetModule.outputs.actualSubnets, {}, (cur, next) => union(cur, next))
