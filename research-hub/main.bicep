@@ -139,6 +139,7 @@ param deploymentTime string = utcNow()
 param addAutoDateCreatedTag bool = false
 param addDateModifiedTag bool = true
 param autoDate string = utcNow('yyyy-MM-dd')
+param enableAvmTelemetry bool = true
 
 param debugMode bool = false
 // param debugRemoteIp string = ''
@@ -446,6 +447,58 @@ module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHost
     }
   }
 
+resource imagingRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
+  #disable-next-line BCP334
+  name: take(replace(rgNamingStructure, '{subWorkloadName}', 'imaging'), 64)
+  location: location
+  tags: actualTags
+}
+
+module computeGalleryNameModule '../module-library/createValidAzResourceName.bicep' = {
+  scope: imagingRg
+  name: take(replace(deploymentNameStructure, '{rtype}', 'galname'), 64)
+  params: {
+    environment: environment
+    location: location
+    namingConvention: namingConvention
+    resourceType: 'gal'
+    sequence: sequence
+    workloadName: workloadName
+    subWorkloadName: ''
+  }
+}
+module computeGalleryModule 'br/public:avm/res/compute/gallery:0.3.1' = {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'gal'), 64)
+  scope: imagingRg
+  params: {
+    name: computeGalleryNameModule.outputs.shortName
+    location: location
+
+    images: [
+      {
+        hyperVGeneration: 'V2'
+        name: 'sample'
+        offer: 'WindowsClient'
+        osType: 'Windows'
+        publisher: 'Customer'
+        sku: 'Windows-11-Enterprise-23H2-Gen2'
+
+        securityType: 'TrustedLaunch'
+        isAcceleratedNetworkSupported: true
+        isHibernateSupported: true
+        osState: 'Generalized'
+
+        maxRecommendedMemory: 4000
+        maxRecommendedvCPUs: 128
+        minRecommendedMemory: 4
+        minRecommendedvCPUs: 2
+      }
+    ]
+
+    tags: actualTags
+    enableTelemetry: enableAvmTelemetry
+  }
+}
 module rolesModule '../module-library/roles.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'roles'), 64)
 }
