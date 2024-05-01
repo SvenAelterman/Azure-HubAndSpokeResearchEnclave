@@ -401,6 +401,13 @@ module avdJumpBoxModule '../shared-modules/virtualDesktop/avd.bicep' =
     }
   }
 
+var defaultImageReference = {
+  publisher: 'microsoftwindowsdesktop'
+  offer: 'Windows-11'
+  sku: 'win11-23h2-ent'
+  version: 'latest'
+}
+
 module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHosts.bicep' =
   if (!researchVmsAreSessionHosts && jumpBoxSessionHostCount > 0) {
     scope: avdRg
@@ -438,12 +445,7 @@ module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHost
 
       // Use a non-M365 apps default image for the jump box
       // All we need is mstsc.exe
-      imageReference: {
-        publisher: 'microsoftwindowsdesktop'
-        offer: 'Windows-11'
-        sku: 'win11-23h2-ent'
-        version: 'latest'
-      }
+      imageReference: defaultImageReference
     }
   }
 
@@ -454,51 +456,25 @@ resource imagingRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   tags: actualTags
 }
 
-module computeGalleryNameModule '../module-library/createValidAzResourceName.bicep' = {
+module imagingModule 'hub-modules/imaging/main.bicep' = {
   scope: imagingRg
-  name: take(replace(deploymentNameStructure, '{rtype}', 'galname'), 64)
+  name: take(replace(deploymentNameStructure, '{rtype}', 'imaging'), 64)
   params: {
+    location: location
+    deploymentNameStructure: deploymentNameStructure
     environment: environment
-    location: location
     namingConvention: namingConvention
-    resourceType: 'gal'
     sequence: sequence
-    workloadName: workloadName
-    subWorkloadName: ''
-  }
-}
-module computeGalleryModule 'br/public:avm/res/compute/gallery:0.3.1' = {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'gal'), 64)
-  scope: imagingRg
-  params: {
-    name: computeGalleryNameModule.outputs.shortName
-    location: location
-
-    images: [
-      {
-        hyperVGeneration: 'V2'
-        name: 'sample'
-        offer: 'WindowsClient'
-        osType: 'Windows'
-        publisher: 'Customer'
-        sku: 'Windows-11-Enterprise-23H2-Gen2'
-
-        securityType: 'TrustedLaunch'
-        isAcceleratedNetworkSupported: true
-        isHibernateSupported: true
-        osState: 'Generalized'
-
-        maxRecommendedMemory: 4000
-        maxRecommendedvCPUs: 128
-        minRecommendedMemory: 4
-        minRecommendedvCPUs: 2
-      }
-    ]
-
     tags: actualTags
-    enableTelemetry: enableAvmTelemetry
+    workloadName: workloadName
+    enableAvmTelemetry: enableAvmTelemetry
+    uamiId: uamiModule.outputs.id
+    imageReference: defaultImageReference
+    namingStructure: resourceNamingStructureNoSub
+    uamiPrincipalId: uamiModule.outputs.principalId
   }
 }
+
 module rolesModule '../module-library/roles.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'roles'), 64)
 }
