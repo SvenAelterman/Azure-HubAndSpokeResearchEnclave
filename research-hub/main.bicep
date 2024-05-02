@@ -468,10 +468,8 @@ module imagingModule 'hub-modules/imaging/main.bicep' = {
     tags: actualTags
     workloadName: workloadName
     enableAvmTelemetry: enableAvmTelemetry
-    uamiId: uamiModule.outputs.id
     imageReference: defaultImageReference
     namingStructure: resourceNamingStructureNoSub
-    uamiPrincipalId: uamiModule.outputs.principalId
   }
 }
 
