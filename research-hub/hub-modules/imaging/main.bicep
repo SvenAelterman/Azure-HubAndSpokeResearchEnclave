@@ -121,6 +121,8 @@ module computeGalleryModule 'br/public:avm/res/compute/gallery:0.3.1' = {
         maxRecommendedvCPUs: 128
         minRecommendedMemory: 4
         minRecommendedvCPUs: 2
+
+        tags: tags
       }
     ]
 
