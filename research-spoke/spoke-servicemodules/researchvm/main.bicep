@@ -2,6 +2,7 @@ param location string = resourceGroup().location
 param namingStructure string
 param tags object
 
+@description('The prefix that will be used for the machine\'s host name.')
 @maxLength(13)
 param vmNamePrefix string
 @minValue(1)
@@ -16,13 +17,12 @@ param vmLocalAdminUsername string
 @secure()
 param vmLocalAdminPassword string
 
-@description('Schema: { domainJoinPassword: string, domainJoinUserName: string, adDomainFqdn: string, adOuPath: string }')
-param ADDomainInfo activeDirectoryDomainInfo = {
-  domainJoinPassword: ''
-  domainJoinUsername: ''
-  adDomainFqdn: ''
-  adOuPath: ''
-}
+@secure()
+param domainJoinPassword string = ''
+@secure()
+param domainJoinUsername string = ''
+param adDomainFqdn string = ''
+param adOuPath string = ''
 
 param imageReference imageReferenceType = {
   // No image resource ID specified; use a default image
@@ -203,7 +203,7 @@ resource entraIDJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023
 
 // Domain join the session hosts to Active Directory, if specified
 resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [
-  for i in range(0, vmCount): if (logonType == 'ad' && !empty(ADDomainInfo)) {
+  for i in range(0, vmCount): if (logonType == 'ad') {
     name: 'DomainJoin'
     parent: virtualMachines[i]
     location: location
@@ -214,14 +214,14 @@ resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023-
       typeHandlerVersion: '1.3'
       autoUpgradeMinorVersion: true
       settings: {
-        name: ADDomainInfo.adDomainFqdn
-        ouPath: ADDomainInfo.adOuPath
-        user: ADDomainInfo.domainJoinUsername
+        name: adDomainFqdn
+        ouPath: adOuPath
+        user: domainJoinUsername
         restart: 'true'
         options: '3'
       }
       protectedSettings: {
-        password: ADDomainInfo.domainJoinPassword
+        password: domainJoinPassword
       }
     }
     dependsOn: [windowsGuestAttestationExtension[i], windowsVMGuestConfigExtension[i]]
