@@ -67,7 +67,6 @@ module aibNetworkModule '../../../shared-modules/networking/main.bicep' = {
   params: {
     deploymentNameStructure: deploymentNameStructure
     location: location
-    // TODO: Change naming to have subworkloadname
     namingStructure: namingStructure
     vnetAddressPrefixes: [aibNetworkAddressPrefix]
 

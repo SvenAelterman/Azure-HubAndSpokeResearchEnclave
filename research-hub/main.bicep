@@ -469,7 +469,7 @@ module imagingModule 'hub-modules/imaging/main.bicep' = {
     workloadName: workloadName
     enableAvmTelemetry: enableAvmTelemetry
     imageReference: defaultImageReference
-    namingStructure: resourceNamingStructureNoSub
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'imaging')
   }
 }
 
