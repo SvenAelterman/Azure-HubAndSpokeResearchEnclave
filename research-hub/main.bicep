@@ -250,6 +250,8 @@ module networkModule 'hub-modules/networking/main.bicep' = {
 
     firewallForcedTunnel: !empty(mainHubNvaIp)
     firewallForcedTunnelNvaIP: mainHubNvaIp
+
+    deployManagementSubnet: logonType == 'ad'
   }
 }
 
@@ -471,6 +473,37 @@ module imagingModule 'hub-modules/imaging/main.bicep' = {
     enableAvmTelemetry: enableAvmTelemetry
     imageReference: sampleImageTemplateImageReference
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'imaging')
+  }
+}
+
+// Deploy a management VM, for example, to domain join the storage accounts in the spokes to AD
+resource managementRg 'Microsoft.Resources/resourceGroups@2022-09-01' = if (logonType == 'ad') {
+  #disable-next-line BCP334
+  name: take(replace(rgNamingStructure, '{subWorkloadName}', 'management'), 64)
+  location: location
+  tags: actualTags
+}
+
+module managementVmModule './hub-modules/management-vm/main.bicep' = if (logonType == 'ad') {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'vm-mgmt'), 64)
+  scope: managementRg
+  params: {
+    location: location
+    tags: actualTags
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'mgmtvm')
+    subnetId: networkModule.outputs.createdSubnets.ManagementSubnet.id
+
+    vmLocalAdminUsername: sessionHostLocalAdminUsername
+    vmLocalAdminPassword: sessionHostLocalAdminPassword
+
+    vmNamePrefix: 'mgmt-${take(workloadName,9)}${take(string(sequence),1)}'
+
+    adDomainFqdn: adDomainFqdn
+    adOuPath: adOuPath
+    domainJoinUsername: domainJoinUsername
+    domainJoinPassword: domainJoinPassword
+
+    logonType: logonType
   }
 }
 
