@@ -313,52 +313,49 @@ module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bic
 }
 
 // Create encryption keys in the Key Vault for data factory, storage accounts, disks, and recovery services vault
-module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' =
-  if (useCMK) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'keys'), 64)
-    scope: securityRg
-    params: {
-      keyVaultName: keyVaultModule.outputs.keyVaultName
-      keyExpirySeed: encryptionKeyExpirySeed
-      debugMode: debugMode
-    }
+module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' = if (useCMK) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'keys'), 64)
+  scope: securityRg
+  params: {
+    keyVaultName: keyVaultModule.outputs.keyVaultName
+    keyExpirySeed: encryptionKeyExpirySeed
+    debugMode: debugMode
   }
+}
 
 var kvEncryptionKeys = reduce(encryptionKeysModule.outputs.keys, {}, (cur, next) => union(cur, next))
 
 var deployingVMs = (!researchVmsAreSessionHosts && jumpBoxSessionHostCount > 0) || isAirlockReviewCentralized
 
 // Create a Disk Encryption Set if we're deploying any VMs and we need to use CMK
-module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bicep' =
-  if (deployingVMs && useCMK) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'des'), 64)
-    scope: securityRg
-    params: {
-      location: location
-      deploymentNameStructure: deploymentNameStructure
-      tags: actualTags
+module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bicep' = if (deployingVMs && useCMK) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'des'), 64)
+  scope: securityRg
+  params: {
+    location: location
+    deploymentNameStructure: deploymentNameStructure
+    tags: actualTags
 
-      keyVaultId: keyVaultModule.outputs.id
-      uamiId: uamiModule.outputs.id
-      // TODO: Validate WithVersion is needed
-      keyUrl: kvEncryptionKeys.diskEncryptionSet.keyUriWithVersion
-      name: replace(resourceNamingStructureNoSub, '{rtype}', 'des')
-      kvRoleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
-    }
+    keyVaultId: keyVaultModule.outputs.id
+    uamiId: uamiModule.outputs.id
+    // TODO: Validate WithVersion is needed
+    keyUrl: kvEncryptionKeys.diskEncryptionSet.keyUriWithVersion
+    name: replace(resourceNamingStructureNoSub, '{rtype}', 'des')
+    kvRoleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
   }
+}
 
 /*
  * Deploy Azure Virtual Desktop
  */
 
 // If needed, create the AVD resource group
-resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' =
-  if (!researchVmsAreSessionHosts) {
-    #disable-next-line BCP334
-    name: take(replace(rgNamingStructure, '{subWorkloadName}', 'avd'), 64)
-    location: location
-    tags: actualTags
-  }
+resource avdRg 'Microsoft.Resources/resourceGroups@2022-09-01' = if (!researchVmsAreSessionHosts) {
+  #disable-next-line BCP334
+  name: take(replace(rgNamingStructure, '{subWorkloadName}', 'avd'), 64)
+  location: location
+  tags: actualTags
+}
 
 // Create variables to reference the private link DNS zone for WVD
 var privateLinkSubscriptionId = !empty(existingPrivateDnsZonesResourceGroupId)
@@ -376,84 +373,88 @@ var wvdPrivateLinkDnsZoneId = resourceId(
 )
 
 // Deploy Azure Virtual Desktop resources if AVD is used as jump hosts into the spokes
-module avdJumpBoxModule '../shared-modules/virtualDesktop/avd.bicep' =
-  if (!researchVmsAreSessionHosts) {
-    scope: avdRg
-    name: take(replace(deploymentNameStructure, '{rtype}', 'avd'), 64)
-    params: {
-      location: location
-      deploymentNameStructure: deploymentNameStructure
-      logonType: logonType
-      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
-      privateEndpointSubnetId: networkModule.outputs.createdSubnets.DataSubnet.id
-      privateLinkDnsZoneId: wvdPrivateLinkDnsZoneId
-      roles: rolesModule.outputs.roles
-      tags: actualTags
+module avdJumpBoxModule '../shared-modules/virtualDesktop/avd.bicep' = if (!researchVmsAreSessionHosts) {
+  scope: avdRg
+  name: take(replace(deploymentNameStructure, '{rtype}', 'avd'), 64)
+  params: {
+    location: location
+    deploymentNameStructure: deploymentNameStructure
+    logonType: logonType
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
+    privateEndpointSubnetId: networkModule.outputs.createdSubnets.DataSubnet.id
+    privateLinkDnsZoneId: wvdPrivateLinkDnsZoneId
+    roles: rolesModule.outputs.roles
+    tags: actualTags
 
-      adminObjectId: systemAdminObjectId
+    adminObjectId: systemAdminObjectId
 
-      workspaceFriendlyName: 'Secure Research Access (${workloadName}-${sequenceFormatted})'
-      desktopAppGroupFriendlyName: ''
-      deployDesktopAppGroup: false
+    workspaceFriendlyName: 'Secure Research Access (${workloadName}-${sequenceFormatted})'
+    desktopAppGroupFriendlyName: ''
+    deployDesktopAppGroup: false
 
-      remoteAppApplicationGroupInfo: [remoteDesktopAppGroupInfo]
-      usePrivateLinkForHostPool: usePrivateEndpoints
-    }
+    remoteAppApplicationGroupInfo: [remoteDesktopAppGroupInfo]
+    usePrivateLinkForHostPool: usePrivateEndpoints
   }
-
-var defaultImageReference = {
-  publisher: 'microsoftwindowsdesktop'
-  offer: 'Windows-11'
-  sku: 'win11-23h2-ent'
-  version: 'latest'
 }
 
-module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHosts.bicep' =
-  if (!researchVmsAreSessionHosts && jumpBoxSessionHostCount > 0) {
-    scope: avdRg
-    name: take(replace(deploymentNameStructure, '{rtype}', 'avd-sh'), 64)
-    params: {
-      location: location
-      deploymentNameStructure: deploymentNameStructure
-      tags: actualTags
+module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHosts.bicep' = if (!researchVmsAreSessionHosts && jumpBoxSessionHostCount > 0) {
+  scope: avdRg
+  name: take(replace(deploymentNameStructure, '{rtype}', 'avd-sh'), 64)
+  params: {
+    location: location
+    deploymentNameStructure: deploymentNameStructure
+    tags: actualTags
 
-      diskEncryptionSetId: diskEncryptionSetModule.outputs.id
+    diskEncryptionSetId: diskEncryptionSetModule.outputs.id
 
-      // TODO: Specify if required to backup
-      backupPolicyName: ''
-      recoveryServicesVaultId: ''
+    // TODO: Specify if required to backup
+    backupPolicyName: ''
+    recoveryServicesVaultId: ''
 
-      hostPoolName: avdJumpBoxModule.outputs.hostPoolName
-      hostPoolToken: avdJumpBoxModule.outputs.hostPoolRegistrationToken
-      logonType: logonType
-      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
-      subnetId: networkModule.outputs.createdSubnets.AvdSubnet.id
-      vmCount: jumpBoxSessionHostCount
-      vmLocalAdminUsername: sessionHostLocalAdminUsername
-      vmLocalAdminPassword: sessionHostLocalAdminPassword
-      vmNamePrefix: 'sh-${workloadName}${sequence}'
-      vmSize: jumpBoxSessionHostVmSize
+    hostPoolName: avdJumpBoxModule.outputs.hostPoolName
+    hostPoolToken: avdJumpBoxModule.outputs.hostPoolRegistrationToken
+    logonType: logonType
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
+    subnetId: networkModule.outputs.createdSubnets.AvdSubnet.id
+    vmCount: jumpBoxSessionHostCount
+    vmLocalAdminUsername: sessionHostLocalAdminUsername
+    vmLocalAdminPassword: sessionHostLocalAdminPassword
+    vmNamePrefix: 'sh-${workloadName}${sequence}'
+    vmSize: jumpBoxSessionHostVmSize
 
-      ADDomainInfo: logonType == 'ad'
-        ? {
-            domainJoinPassword: domainJoinPassword
-            domainJoinUsername: domainJoinUsername
-            adDomainFqdn: adDomainFqdn
-            adOuPath: adOuPath
-          }
-        : null
+    ADDomainInfo: logonType == 'ad'
+      ? {
+          domainJoinPassword: domainJoinPassword
+          domainJoinUsername: domainJoinUsername
+          adDomainFqdn: adDomainFqdn
+          adOuPath: adOuPath
+        }
+      : null
 
-      // Use a non-M365 apps default image for the jump box
-      // All we need is mstsc.exe
-      imageReference: defaultImageReference
+    // Use a multi-session non-M365 apps default image for the jump box
+    // All we need is mstsc.exe and the M365 images will pop up Teams notifications
+    imageReference: {
+      publisher: 'MicrosoftWindowsDesktop'
+      offer: 'Windows-11'
+      sku: 'win11-23h2-avd'
+      version: 'latest'
     }
   }
+}
 
 resource imagingRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   #disable-next-line BCP334
   name: take(replace(rgNamingStructure, '{subWorkloadName}', 'imaging'), 64)
   location: location
   tags: actualTags
+}
+
+// Default image that will be used to create an Image Template
+var sampleImageTemplateImageReference = {
+  publisher: 'microsoftwindowsdesktop'
+  offer: 'Windows-11'
+  sku: 'win11-23h2-ent'
+  version: 'latest'
 }
 
 module imagingModule 'hub-modules/imaging/main.bicep' = {
@@ -468,7 +469,7 @@ module imagingModule 'hub-modules/imaging/main.bicep' = {
     tags: actualTags
     workloadName: workloadName
     enableAvmTelemetry: enableAvmTelemetry
-    imageReference: defaultImageReference
+    imageReference: sampleImageTemplateImageReference
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'imaging')
   }
 }
