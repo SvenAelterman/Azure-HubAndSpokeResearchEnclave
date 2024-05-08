@@ -146,18 +146,13 @@ module imageTemplateModule 'br/public:avm/res/virtual-machine-images/image-templ
           'include:$true'
         ]
       }
-      // {
-      //   type: 'WindowsRestart'
-      //   restartCheckCommand: 'echo Azure-Image-Builder-Restarted-the-VM  > c:\\buildArtifacts\\azureImageBuilderRestart.txt'
-      //   restartTimeout: '10m'
-      // }
       {
         type: 'PowerShell'
         name: 'Install Microsoft Storage Explorer'
         runElevated: true
         runAsSystem: true
         // TODO: Use main branch
-        scriptUri: 'https://raw.githubusercontent.com/SvenAelterman/Azure-HubAndSpokeResearchEnclave/53-provide-supporting-azure-resources-for-building-custom-images/scripts/PowerShell/Scripts/AIB/Windows/Install-StorageExplorer.ps1'
+        scriptUri: 'https://raw.githubusercontent.com/SvenAelterman/Azure-HubAndSpokeResearchEnclave/main/scripts/PowerShell/Scripts/AIB/Windows/Install-StorageExplorer.ps1'
         sha256Checksum: 'a8122168d9700c8e3b2fe03804e181a88fdc4833bbeee19bd42e58e3d85903c5'
       }
       {
@@ -166,7 +161,7 @@ module imageTemplateModule 'br/public:avm/res/virtual-machine-images/image-templ
         runElevated: true
         runAsSystem: true
         // TODO: Use main branch
-        scriptUri: 'https://raw.githubusercontent.com/SvenAelterman/Azure-HubAndSpokeResearchEnclave/53-provide-supporting-azure-resources-for-building-custom-images/scripts/PowerShell/Scripts/AIB/Windows/Install-AzCopy.ps1'
+        scriptUri: 'https://raw.githubusercontent.com/SvenAelterman/Azure-HubAndSpokeResearchEnclave/main/scripts/PowerShell/Scripts/AIB/Windows/Install-AzCopy.ps1'
         sha256Checksum: '45453a42a0d8d75f4aecb0e83566078373b3320489431b158f8ea4ae08379e59'
       }
     ]
