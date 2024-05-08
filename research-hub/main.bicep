@@ -139,6 +139,7 @@ param deploymentTime string = utcNow()
 param addAutoDateCreatedTag bool = false
 param addDateModifiedTag bool = true
 param autoDate string = utcNow('yyyy-MM-dd')
+param enableAvmTelemetry bool = true
 
 param debugMode bool = false
 // param debugRemoteIp string = ''
@@ -400,6 +401,13 @@ module avdJumpBoxModule '../shared-modules/virtualDesktop/avd.bicep' =
     }
   }
 
+var defaultImageReference = {
+  publisher: 'microsoftwindowsdesktop'
+  offer: 'Windows-11'
+  sku: 'win11-23h2-ent'
+  version: 'latest'
+}
+
 module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHosts.bicep' =
   if (!researchVmsAreSessionHosts && jumpBoxSessionHostCount > 0) {
     scope: avdRg
@@ -437,14 +445,33 @@ module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHost
 
       // Use a non-M365 apps default image for the jump box
       // All we need is mstsc.exe
-      imageReference: {
-        publisher: 'microsoftwindowsdesktop'
-        offer: 'Windows-11'
-        sku: 'win11-23h2-ent'
-        version: 'latest'
-      }
+      imageReference: defaultImageReference
     }
   }
+
+resource imagingRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
+  #disable-next-line BCP334
+  name: take(replace(rgNamingStructure, '{subWorkloadName}', 'imaging'), 64)
+  location: location
+  tags: actualTags
+}
+
+module imagingModule 'hub-modules/imaging/main.bicep' = {
+  scope: imagingRg
+  name: take(replace(deploymentNameStructure, '{rtype}', 'imaging'), 64)
+  params: {
+    location: location
+    deploymentNameStructure: deploymentNameStructure
+    environment: environment
+    namingConvention: namingConvention
+    sequence: sequence
+    tags: actualTags
+    workloadName: workloadName
+    enableAvmTelemetry: enableAvmTelemetry
+    imageReference: defaultImageReference
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'imaging')
+  }
+}
 
 module rolesModule '../module-library/roles.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'roles'), 64)

@@ -22,39 +22,42 @@ param customDnsIPs = [
   '10.40.6.5'
 ]
 
-param additionalSubnets = {
-  aadds: {
-    serviceEndpoints: []
-    securityRules: [
-      {
-        name: 'AllowPSRemoting'
-        properties: {
-          protocol: 'Tcp'
-          sourcePortRange: '*'
-          destinationPortRange: '5986'
-          sourceAddressPrefix: 'AzureActiveDirectoryDomainServices'
-          destinationAddressPrefix: '*'
-          access: 'Allow'
-          priority: 301
-          direction: 'Inbound'
-        }
-      }
-      {
-        name: 'AllowRD'
-        properties: {
-          protocol: 'Tcp'
-          sourcePortRange: '*'
-          destinationPortRange: '3389'
-          sourceAddressPrefix: 'CorpNetSaw'
-          destinationAddressPrefix: '*'
-          access: 'Allow'
-          priority: 201
-          direction: 'Inbound'
-        }
-      }
-    ]
-    delegation: ''
-    order: 6
-    subnetCidr: 24
-  }
-}
+param enableAvmTelemetry = true
+
+// TODO: Update sample
+// param additionalSubnets = {
+//   aadds: {
+//     serviceEndpoints: []
+//     securityRules: [
+//       {
+//         name: 'AllowPSRemoting'
+//         properties: {
+//           protocol: 'Tcp'
+//           sourcePortRange: '*'
+//           destinationPortRange: '5986'
+//           sourceAddressPrefix: 'AzureActiveDirectoryDomainServices'
+//           destinationAddressPrefix: '*'
+//           access: 'Allow'
+//           priority: 301
+//           direction: 'Inbound'
+//         }
+//       }
+//       {
+//         name: 'AllowRD'
+//         properties: {
+//           protocol: 'Tcp'
+//           sourcePortRange: '*'
+//           destinationPortRange: '3389'
+//           sourceAddressPrefix: 'CorpNetSaw'
+//           destinationAddressPrefix: '*'
+//           access: 'Allow'
+//           priority: 201
+//           direction: 'Inbound'
+//         }
+//       }
+//     ]
+//     delegation: ''
+//     order: 6
+//     subnetCidr: 24
+//   }
+// }
