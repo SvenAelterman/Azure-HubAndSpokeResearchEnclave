@@ -250,6 +250,23 @@ module avdRouteTableModule '../../../shared-modules/networking/rt.bicep' = if (d
   }
 }
 
+// Modify the AVD route table to route traffic through the Azure Firewall
+module mgmtRouteTableModule '../../../shared-modules/networking/rt.bicep' = if (deployManagementSubnet) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'rt-mgmt-fw'), 64)
+  params: {
+    location: location
+
+    routes: json(replace(
+      loadTextContent('../../../shared-modules/networking/routes/DefaultToNVA.jsonc'),
+      '{{nvaIPAddress}}',
+      azureFirewallModule.outputs.fwPrIp
+    ))
+
+    rtName: networkModule.outputs.createdSubnets.ManagementSubnet.routeTableName
+    tags: tags
+  }
+}
+
 // Modify the Airlock route table to route traffic through the Azure Firewall
 module airlockRouteTableModule '../../../shared-modules/networking/rt.bicep' = if (deployAirlockSubnet) {
   name: take(replace(deploymentNameStructure, '{rtype}', 'rt-airlock-fw'), 64)
