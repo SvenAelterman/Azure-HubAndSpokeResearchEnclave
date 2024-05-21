@@ -167,15 +167,14 @@ resource containers 'Microsoft.Storage/storageAccounts/blobServices/containers@2
   }
 ]
 
-resource storageAccountLock 'Microsoft.Authorization/locks@2020-05-01' =
-  if (applyDeleteLock) {
-    name: replace(namingStructure, '{rtype}', 'st-lock')
-    scope: storageAccount
-    properties: {
-      level: 'CanNotDelete'
-      notes: 'This storage account potentially contains research data. Delete this lock to delete the storage account after validating that the research data is not subject to retention requirements.'
-    }
+resource storageAccountLock 'Microsoft.Authorization/locks@2020-05-01' = if (applyDeleteLock) {
+  name: replace(namingStructure, '{rtype}', 'st-lock')
+  scope: storageAccount
+  properties: {
+    level: 'CanNotDelete'
+    notes: 'This storage account potentially contains research data. Delete this lock to delete the storage account after validating that the research data is not subject to retention requirements.'
   }
+}
 
 // Create one private endpoint per specified sub resource (group)
 @batchSize(1)
@@ -203,7 +202,7 @@ resource privateEndpoints 'Microsoft.Network/privateEndpoints@2022-09-01' = [
   }
 ]
 
-// Register the private endpoint in the respective private DNS zone
+// Register each private endpoint in the respective private DNS zone
 @batchSize(1)
 resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = [
   for (pe, i) in privateEndpointInfo: {
@@ -225,3 +224,6 @@ resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZ
 
 output id string = storageAccount.id
 output name string = storageAccount.name
+output primaryFileEndpoint string = storageAccount.properties.primaryEndpoints.file
+// LATER: This will not work with DNS zone based storage accounts
+output primaryFileFqdn string = '${storageAccount.name}.file.${az.environment().suffixes.storage}'
