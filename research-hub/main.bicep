@@ -498,10 +498,14 @@ module managementVmModule './hub-modules/management-vm/main.bicep' = if (logonTy
 
     vmNamePrefix: 'mgmt-${take(workloadName,9)}${take(string(sequence),1)}'
 
-    adDomainFqdn: adDomainFqdn
-    adOuPath: adOuPath
-    domainJoinUsername: domainJoinUsername
-    domainJoinPassword: domainJoinPassword
+    domainJoinInfo: logonType == 'ad'
+      ? {
+          adDomainFqdn: adDomainFqdn
+          domainJoinPassword: domainJoinPassword
+          domainJoinUsername: domainJoinUsername
+          adOuPath: adOuPath
+        }
+      : null
 
     logonType: logonType
   }
@@ -516,6 +520,10 @@ output hubVnetResourceId string = networkModule.outputs.vNetId
 output hubPrivateDnsZonesResourceGroupId string = empty(existingPrivateDnsZonesResourceGroupId)
   ? networkRg.id
   : existingPrivateDnsZonesResourceGroupId
+
+//output managementVmUamiId string = managementVmModule.outputs.uamiId
+output managementVmUamiPrincipalId string = managementVmModule.outputs.uamiPrincipalId
+output managementVmUamiClientId string = managementVmModule.outputs.uamiClientId
 
 // TODO: Output the resource ID of the remote application group for the remote desktop application
 // To be used in the spoke for setting permissions
