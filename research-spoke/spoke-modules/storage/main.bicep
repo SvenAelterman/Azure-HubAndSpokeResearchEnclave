@@ -57,15 +57,29 @@ var privateDnsZonesResourceGroupIdSplit = split(privateDnsZonesResourceGroupId, 
 var privateDnsZonesSubscriptionId = privateDnsZonesResourceGroupIdSplit[2]
 var privateDnsZonesResourceGroupName = privateDnsZonesResourceGroupIdSplit[4]
 
-resource uamiRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(resourceGroup().id, uamiId, roles.StorageAccountContributor)
-  properties: {
+// var storageAccountContributorRoleDefinitionId = contains(roles, 'StorageAccountContributor')
+//   ? roles.StorageAccountContributor
+//   : ''
+
+module uamiRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-rg.bicep' = if (domainJoin && length(fileShareNames) > 0) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'uami-rg-rbac'), 64)
+  params: {
     principalId: uamiPrincipalId
     roleDefinitionId: roles.StorageAccountContributor
     principalType: 'ServicePrincipal'
     description: 'Role assignment for hub management VM to domain join storage account'
   }
 }
+
+// resource uamiRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+//   name: guid(resourceGroup().id, uamiId, storageAccountContributorRoleDefinitionId)
+//   properties: {
+//     principalId: uamiPrincipalId
+//     roleDefinitionId: roles.StorageAccountContributor
+//     principalType: 'ServicePrincipal'
+//     description: 'Role assignment for hub management VM to domain join storage account'
+//   }
+// }
 
 // Ensure the private DNS zones for storage exist and reference them
 resource hubPrivateDnsZoneResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
