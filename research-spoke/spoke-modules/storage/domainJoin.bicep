@@ -38,7 +38,7 @@ resource customStorageScript 'Microsoft.Compute/virtualMachines/extensions@2022-
     settings: {}
     protectedSettings: {
       fileUris: array('https://raw.githubusercontent.com/Azure/avdaccelerator/main/workload/scripts/${file}')
-      commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File ./${file} ${scriptArguments} -AdminUserPassword ${adminUserPassword} -Verbose'
+      commandToExecute: 'powershell -ExecutionPolicy Unrestricted -File ./${file} ${scriptArguments} -AdminUserPassword "${replace(adminUserPassword, '"', '""')}" -Verbose'
     }
   }
 }
