@@ -83,6 +83,8 @@ param filesIdentityType string
 param adDomainFqdn string = ''
 @description('Optional. The OU path in LDAP notation to use when joining the session hosts.')
 param adOuPath string = ''
+@description('Optional. The AD OU to use for joined storage accounts. Defaults to the adOuPath.')
+param storageAccountOuPath string = adOuPath
 @description('Optional. The number of Azure Virtual Desktop session hosts to create in the pool. Defaults to 1.')
 param sessionHostCount int = 1
 @description('The prefix used for the computer names of the session host(s). Maximum 11 characters.')
@@ -429,7 +431,7 @@ module storageModule './spoke-modules/storage/main.bicep' = {
     domainJoin: logonType == 'ad'
     domainJoinInfo: {
       domainFqdn: adDomainFqdn
-      ouPath: adOuPath
+      ouPath: storageAccountOuPath //adOuPath
       username: domainJoinUsername
       password: domainJoinPassword
     }
