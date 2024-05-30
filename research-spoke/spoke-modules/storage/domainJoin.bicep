@@ -27,7 +27,7 @@ resource managementVm 'Microsoft.Compute/virtualMachines@2024-03-01' existing = 
 }
 
 resource customStorageScript 'Microsoft.Compute/virtualMachines/extensions@2022-08-01' = {
-  name: 'AzureFilesDomainJoin-${storageAccountName}'
+  name: 'AzureFilesDomainJoin'
   parent: managementVm
   location: resourceGroup().location
   properties: {
