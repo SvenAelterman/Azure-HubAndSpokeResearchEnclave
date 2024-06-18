@@ -13,6 +13,8 @@ param deployVpn bool
 @description('Mutually exclusive with deployVpn.')
 param useRemoteGateway bool
 
+param deployManagementSubnet bool = false
+
 param additionalSubnets array
 
 param peeringRemoteVNetId string
@@ -127,7 +129,19 @@ var AvdSubnet = deployAvdSubnet
         routes: [] // Routes through the firewall will be added later, but we create the route table here
         securityRules: []
         delegation: ''
-        order: 9 // The third /24
+        order: 9 // The tenth /27
+        subnetCidr: 27
+      }
+    }
+  : {}
+
+var ManagementSubnet = deployManagementSubnet
+  ? {
+      ManagementSubnet: {
+        serviceEndpoints: []
+        routes: [] // Routes through the firewall will be added later, but we create the route table here
+        securityRules: []
+        order: 11 // The twelfth /27
         subnetCidr: 27
       }
     }
@@ -140,7 +154,8 @@ var subnets = union(
   GatewaySubnet,
   AvdSubnet,
   AirlockSubnet,
-  AzureFirewallManagementSubnet
+  AzureFirewallManagementSubnet,
+  ManagementSubnet
 )
 
 /*
@@ -202,88 +217,100 @@ module azureFirewallModule './azureFirewall.bicep' = {
 }
 
 // When forced tunneling is enabled, add a route to the NVA on the FirewallSubnet
-module firewallRouteTableModule '../../../shared-modules/networking/rt.bicep' =
-  if (firewallForcedTunnel) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'rt-fw-nva'), 64)
-    params: {
-      location: location
+module firewallRouteTableModule '../../../shared-modules/networking/rt.bicep' = if (firewallForcedTunnel) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'rt-fw-nva'), 64)
+  params: {
+    location: location
 
-      routes: json(replace(
-        loadTextContent('./routes/AzureFirewallForcedTunnel.jsonc'),
-        '{{nvaIPAddress}}',
-        firewallForcedTunnelNvaIP
-      ))
+    routes: json(replace(
+      loadTextContent('./routes/AzureFirewallForcedTunnel.jsonc'),
+      '{{nvaIPAddress}}',
+      firewallForcedTunnelNvaIP
+    ))
 
-      rtName: networkModule.outputs.createdSubnets.AzureFirewallSubnet.routeTableName
-      tags: tags
-    }
+    rtName: networkModule.outputs.createdSubnets.AzureFirewallSubnet.routeTableName
+    tags: tags
   }
+}
 
 // Modify the AVD route table to route traffic through the Azure Firewall
-module avdRouteTableModule '../../../shared-modules/networking/rt.bicep' =
-  if (deployAvdSubnet) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw'), 64)
-    params: {
-      location: location
+module avdRouteTableModule '../../../shared-modules/networking/rt.bicep' = if (deployAvdSubnet) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'rt-avd-fw'), 64)
+  params: {
+    location: location
 
-      routes: json(replace(
-        loadTextContent('../../../shared-modules/networking/routes/DefaultToNVA.jsonc'),
-        '{{nvaIPAddress}}',
-        azureFirewallModule.outputs.fwPrIp
-      ))
+    routes: json(replace(
+      loadTextContent('../../../shared-modules/networking/routes/DefaultToNVA.jsonc'),
+      '{{nvaIPAddress}}',
+      azureFirewallModule.outputs.fwPrIp
+    ))
 
-      rtName: networkModule.outputs.createdSubnets.AvdSubnet.routeTableName
-      tags: tags
-    }
+    rtName: networkModule.outputs.createdSubnets.AvdSubnet.routeTableName
+    tags: tags
   }
+}
+
+// Modify the AVD route table to route traffic through the Azure Firewall
+module mgmtRouteTableModule '../../../shared-modules/networking/rt.bicep' = if (deployManagementSubnet) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'rt-mgmt-fw'), 64)
+  params: {
+    location: location
+
+    routes: json(replace(
+      loadTextContent('../../../shared-modules/networking/routes/DefaultToNVA.jsonc'),
+      '{{nvaIPAddress}}',
+      azureFirewallModule.outputs.fwPrIp
+    ))
+
+    rtName: networkModule.outputs.createdSubnets.ManagementSubnet.routeTableName
+    tags: tags
+  }
+}
 
 // Modify the Airlock route table to route traffic through the Azure Firewall
-module airlockRouteTableModule '../../../shared-modules/networking/rt.bicep' =
-  if (deployAirlockSubnet) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'rt-airlock-fw'), 64)
-    params: {
-      location: location
+module airlockRouteTableModule '../../../shared-modules/networking/rt.bicep' = if (deployAirlockSubnet) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'rt-airlock-fw'), 64)
+  params: {
+    location: location
 
-      routes: json(replace(
-        loadTextContent('../../../shared-modules/networking/routes/DefaultToNVA.jsonc'),
-        '{{nvaIPAddress}}',
-        azureFirewallModule.outputs.fwPrIp
-      ))
+    routes: json(replace(
+      loadTextContent('../../../shared-modules/networking/routes/DefaultToNVA.jsonc'),
+      '{{nvaIPAddress}}',
+      azureFirewallModule.outputs.fwPrIp
+    ))
 
-      rtName: networkModule.outputs.createdSubnets.AirlockSubnet.routeTableName
-      tags: tags
-    }
+    rtName: networkModule.outputs.createdSubnets.AirlockSubnet.routeTableName
+    tags: tags
   }
+}
 
 /*
  * Optionally, deploy Azure Bastion
  */
 
-module bastionModule './bastion.bicep' =
-  if (deployBastion) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'bas'), 64)
-    params: {
-      location: location
-      bastionSubnetId: networkModule.outputs.createdSubnets.AzureBastionSubnet.id
-      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'bas')
-      tags: tags
-    }
+module bastionModule './bastion.bicep' = if (deployBastion) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'bas'), 64)
+  params: {
+    location: location
+    bastionSubnetId: networkModule.outputs.createdSubnets.AzureBastionSubnet.id
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'bas')
+    tags: tags
   }
+}
 
 /*
  * Optionally, deploy a VPN gateway
  */
 
-module vpnGatewayModule './vpnGateway.bicep' =
-  if (deployVpn && !useRemoteGateway) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'vpngw'), 64)
-    params: {
-      location: location
-      gatewaySubnetId: networkModule.outputs.createdSubnets.GatewaySubnet.id
-      namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'vpn')
-      tags: tags
-    }
+module vpnGatewayModule './vpnGateway.bicep' = if (deployVpn && !useRemoteGateway) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'vpngw'), 64)
+  params: {
+    location: location
+    gatewaySubnetId: networkModule.outputs.createdSubnets.GatewaySubnet.id
+    namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'vpn')
+    tags: tags
   }
+}
 
 /*
  * Deploy all private DNS zones

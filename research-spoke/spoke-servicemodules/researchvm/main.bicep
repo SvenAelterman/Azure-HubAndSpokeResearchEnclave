@@ -43,14 +43,7 @@ param recoveryServicesVaultId string
 
 param deploymentTime string = utcNow()
 
-type activeDirectoryDomainInfo = {
-  @secure()
-  domainJoinPassword: string
-  @secure()
-  domainJoinUsername: string
-  adDomainFqdn: string
-  adOuPath: string?
-}
+import { activeDirectoryDomainInfo } from '../../../shared-modules/types/activeDirectoryDomainInfo.bicep'
 
 type imageReferenceType = {
   publisher: string?
@@ -64,19 +57,18 @@ var intuneMdmId = '0000000a-0000-0000-c000-000000000000'
 var deploymentNameStructure = 'researchvm-{rtype}-${deploymentTime}'
 
 // Create a new availability set for the session hosts
-resource availabilitySet 'Microsoft.Compute/availabilitySets@2023-03-01' =
-  if (vmCount > 1) {
-    name: replace(namingStructure, '{rtype}', 'avail')
-    location: location
-    tags: tags
-    properties: {
-      platformUpdateDomainCount: 5
-      platformFaultDomainCount: 2
-    }
-    sku: {
-      name: 'Aligned'
-    }
+resource availabilitySet 'Microsoft.Compute/availabilitySets@2023-03-01' = if (vmCount > 1) {
+  name: replace(namingStructure, '{rtype}', 'avail')
+  location: location
+  tags: tags
+  properties: {
+    platformUpdateDomainCount: 5
+    platformFaultDomainCount: 2
   }
+  sku: {
+    name: 'Aligned'
+  }
+}
 
 var computerNames = [for i in range(0, vmCount): '${vmNamePrefix}-${i}']
 

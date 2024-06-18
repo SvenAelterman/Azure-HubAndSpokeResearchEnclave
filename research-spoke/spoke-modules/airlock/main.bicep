@@ -53,6 +53,19 @@ param adfEncryptionKeyName string
 param privateDnsZonesResourceGroupId string
 param privateEndpointSubnetId string
 
+param domainJoinSpokeAirlockStorageAccount bool
+param domainJoinInfo activeDirectoryDomainInfo = {
+  adDomainFqdn: ''
+  domainJoinPassword: ''
+  domainJoinUsername: ''
+}
+
+param hubManagementVmSubscriptionId string = ''
+param hubManagementVmResourceGroupName string = ''
+param hubManagementVmName string = ''
+param hubManagementVmUamiPrincipalId string = ''
+param hubManagementVmUamiClientId string = ''
+
 param tags object = {}
 param subWorkloadName string = 'airlock'
 
@@ -62,9 +75,13 @@ param filesIdentityType string
 param debugMode bool = false
 param debugRemoteIp string = ''
 
+// Types
+
+import { activeDirectoryDomainInfo } from '../../../shared-modules/types/activeDirectoryDomainInfo.bicep'
+
 // TODO: Pass in useCmk parameter
 
-// TODO: Enable export without review (without Logic App, etc.)
+// LATER: Enable export without review (without Logic App, etc.)
 
 // Get a reference to the already existing private storage account for this spoke
 // Assumed in the same resource group
@@ -88,58 +105,65 @@ module uamiModule '../../../shared-modules/security/uami.bicep' = {
   }
 }
 
-module spokeAirlockStorageAccountModule '../storage/main.bicep' =
-  if (!useCentralizedReview) {
-    name: replace(deploymentNameStructure, '{rtype}', 'st-airlock')
-    params: {
-      location: location
-      namingStructure: namingStructure
-      // No need for any blob containers in this account
-      containerNames: []
-      fileShareNames: [airlockFileShareName]
+module spokeAirlockStorageAccountModule '../storage/main.bicep' = if (!useCentralizedReview) {
+  name: replace(deploymentNameStructure, '{rtype}', 'st-airlock')
+  params: {
+    location: location
+    namingStructure: namingStructure
+    // No need for any blob containers in this account
+    containerNames: []
+    fileShareNames: [airlockFileShareName]
 
-      // Create private endpoints on this storage account
-      privateDnsZonesResourceGroupId: privateDnsZonesResourceGroupId
-      privateEndpointSubnetId: privateEndpointSubnetId
-      storageAccountPrivateEndpointGroups: ['file']
+    // Create private endpoints on this storage account
+    privateDnsZonesResourceGroupId: privateDnsZonesResourceGroupId
+    privateEndpointSubnetId: privateEndpointSubnetId
+    storageAccountPrivateEndpointGroups: ['file']
 
-      deploymentNameStructure: deploymentNameStructure
-      sequence: sequence
-      namingConvention: namingConvention
-      workloadName: workloadName
-      subWorkloadName: subWorkloadName
-      environment: environment
+    deploymentNameStructure: deploymentNameStructure
+    sequence: sequence
+    namingConvention: namingConvention
+    workloadName: workloadName
+    subWorkloadName: subWorkloadName
+    environment: environment
 
-      debugMode: debugMode
-      debugRemoteIp: debugRemoteIp
+    debugMode: debugMode
+    debugRemoteIp: debugRemoteIp
 
-      keyVaultName: keyVaultName
-      keyVaultResourceGroupName: keyVaultResourceGroupName
+    keyVaultName: keyVaultName
+    keyVaultResourceGroupName: keyVaultResourceGroupName
 
-      uamiId: encryptionUamiId
-      storageAccountEncryptionKeyName: storageAccountEncryptionKeyName
+    uamiId: encryptionUamiId
+    storageAccountEncryptionKeyName: storageAccountEncryptionKeyName
 
-      tags: union(tags, { 'hidden-title': 'Airlock Review Storage Account' })
+    tags: union(tags, { 'hidden-title': 'Airlock Review Storage Account' })
 
-      filesIdentityType: filesIdentityType
-    }
+    filesIdentityType: filesIdentityType
+    // Domain join if needed
+    domainJoin: domainJoinSpokeAirlockStorageAccount
+    domainJoinInfo: domainJoinInfo
+    hubSubscriptionId: hubManagementVmSubscriptionId
+    hubManagementRgName: hubManagementVmResourceGroupName
+    hubManagementVmName: hubManagementVmName
+    uamiPrincipalId: hubManagementVmUamiPrincipalId
+    uamiClientId: hubManagementVmUamiClientId
+    roles: roles
   }
+}
 
 /* Call the centralized module to
  * - Assign this UAMI a role to approve the airlock review storage account's private endpoint in the hub
  * - Grant ADF managed identity access to centralized Key Vault to retrieve secrets (#12)
 */
-module centralizedModule 'centralized.bicep' =
-  if (useCentralizedReview) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'airlock-cent'), 64)
-    params: {
-      centralAirlockResources: centralAirlockResources
-      deploymentNameStructure: deploymentNameStructure
-      roles: roles
-      spokeAdfPrincipalId: adfModule.outputs.principalId
-      spokeUamiPrincipalId: uamiModule.outputs.principalId
-    }
+module centralizedModule 'centralized.bicep' = if (useCentralizedReview) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'airlock-cent'), 64)
+  params: {
+    centralAirlockResources: centralAirlockResources
+    deploymentNameStructure: deploymentNameStructure
+    roles: roles
+    spokeAdfPrincipalId: adfModule.outputs.principalId
+    spokeUamiPrincipalId: uamiModule.outputs.principalId
   }
+}
 
 // Assign UAMI a role to approve the project's storage account's private endpoint
 module uamiProjectStorageRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-st.bicep' = {
@@ -322,14 +346,9 @@ module eventGridForPrivateModule 'eventGrid.bicep' = {
   }
 }
 
-resource keyVaultRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
-  name: keyVaultResourceGroupName
-  scope: subscription()
-}
-
 resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
   name: keyVaultName
-  scope: keyVaultRg
+  scope: spokeKeyVaultRg
 }
 
 // Trigger to move ingested blobs from the project's public storage account to the private storage account
@@ -419,7 +438,8 @@ module approvePrivateEndpointDeploymentScriptModule 'deploymentScript.bicep' = {
     tags: tags
     debugMode: debugMode
   }
-  // TODO: Validate these dependencies
+
   dependsOn: [centralizedModule, uamiProjectStorageRoleAssignmentModule]
 }
+
 // TODO: Access controls on airlock review storage account, if not centralized, for reviewer object ID

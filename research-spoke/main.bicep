@@ -83,6 +83,8 @@ param filesIdentityType string
 param adDomainFqdn string = ''
 @description('Optional. The OU path in LDAP notation to use when joining the session hosts.')
 param adOuPath string = ''
+@description('Optional. The AD OU to use for joined storage accounts. Defaults to the adOuPath.')
+param storageAccountOuPath string = adOuPath
 @description('Optional. The number of Azure Virtual Desktop session hosts to create in the pool. Defaults to 1.')
 param sessionHostCount int = 1
 @description('The prefix used for the computer names of the session host(s). Maximum 11 characters.')
@@ -92,7 +94,6 @@ param sessionHostNamePrefix string = 'N/A'
 param sessionHostSize string = 'N/A'
 @description('If true, will configure the deployment of AVD to make the AVD session hosts usable as research VMs. This will give full desktop access, flow the AVD traffic through the firewall, etc.')
 param useSessionHostAsResearchVm bool = true
-
 @description('Entra ID object ID of the user or group (researchers) to assign permissions to access the AVD application groups and storage.')
 param researcherEntraIdObjectId string
 @description('Entra ID object ID of the admin user or group to assign permissions to administer the AVD session hosts, storage, etc.')
@@ -124,6 +125,10 @@ param publicStorageAccountAllowedIPs array = []
 ])
 // Default to the strictest supported compliance framework
 param complianceTarget string = 'NIST80053R5'
+
+param hubManagementVmId string = ''
+param hubManagementVmUamiPrincipalId string = ''
+param hubManagementVmUamiClientId string = ''
 
 param debugMode bool = false
 param debugRemoteIp string = ''
@@ -329,16 +334,15 @@ module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
 }
 
 // Create encryption keys in the Key Vault for data factory, storage accounts, disks, and recovery services vault
-module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' =
-  if (useCMK) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'keys'), 64)
-    scope: securityRg
-    params: {
-      keyVaultName: keyVaultModule.outputs.keyVaultName
-      keyExpirySeed: encryptionKeyExpirySeed
-      debugMode: debugMode
-    }
+module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' = if (useCMK) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'keys'), 64)
+  scope: securityRg
+  params: {
+    keyVaultName: keyVaultModule.outputs.keyVaultName
+    keyExpirySeed: encryptionKeyExpirySeed
+    debugMode: debugMode
   }
+}
 
 var kvEncryptionKeys = useCMK ? reduce(encryptionKeysModule.outputs.keys, {}, (cur, next) => union(cur, next)) : null
 
@@ -364,23 +368,26 @@ module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bic
 }
 
 // Create the disk encryption set with system-assigned MI and grant access to Key Vault
-module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bicep' =
-  if (useCMK) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'des'), 64)
-    scope: securityRg
-    params: {
-      keyVaultId: keyVaultModule.outputs.id
-      // TODO: Validate WithVersion is needed
-      keyUrl: kvEncryptionKeys.diskEncryptionSet.keyUriWithVersion
-      uamiId: uamiModule.outputs.id
-      location: location
-      name: replace(namingStructureNoSub, '{rtype}', 'des')
-      tags: actualTags
-      deploymentNameStructure: deploymentNameStructure
-      kvRoleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
-    }
-    dependsOn: [uamiKvRbacModule]
+module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bicep' = if (useCMK) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'des'), 64)
+  scope: securityRg
+  params: {
+    keyVaultId: keyVaultModule.outputs.id
+    // TODO: Validate WithVersion is needed
+    keyUrl: kvEncryptionKeys.diskEncryptionSet.keyUriWithVersion
+    uamiId: uamiModule.outputs.id
+    location: location
+    name: replace(namingStructureNoSub, '{rtype}', 'des')
+    tags: actualTags
+    deploymentNameStructure: deploymentNameStructure
+    kvRoleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
   }
+  dependsOn: [uamiKvRbacModule]
+}
+
+var hubManagementVmSubscriptionId = split(hubManagementVmId, '/')[2]
+var hubManagementVmResourceGroupName = split(hubManagementVmId, '/')[4]
+var hubManagementVmName = split(hubManagementVmId, '/')[8]
 
 // Deploy the project's private storage account
 module storageModule './spoke-modules/storage/main.bicep' = {
@@ -421,7 +428,23 @@ module storageModule './spoke-modules/storage/main.bicep' = {
 
     // TODO: This needs additional refinement: specifying the domain info for AADKERB (guid, name)
     filesIdentityType: filesIdentityType
+    domainJoin: logonType == 'ad'
+    domainJoinInfo: storageAccountDomainJoinInfo
+
+    hubSubscriptionId: hubManagementVmSubscriptionId
+    hubManagementRgName: hubManagementVmResourceGroupName
+    hubManagementVmName: hubManagementVmName
+    uamiPrincipalId: hubManagementVmUamiPrincipalId
+    uamiClientId: hubManagementVmUamiClientId
+    roles: rolesModule.outputs.roles
   }
+}
+
+var storageAccountDomainJoinInfo = {
+  adDomainFqdn: adDomainFqdn
+  adOuPath: storageAccountOuPath
+  domainJoinUsername: domainJoinUsername
+  domainJoinPassword: domainJoinPassword
 }
 
 // Set blob and SMB permissions for group on private storage
@@ -451,47 +474,47 @@ module privateStFileShareRbacModule '../module-library/roleAssignments/roleAssig
   }
 ]
 
-module vdiModule '../shared-modules/virtualDesktop/main.bicep' =
-  if (useSessionHostAsResearchVm) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'vdi'), 64)
-    params: {
-      resourceGroupName: replace(rgNamingStructure, '{rgname}', 'avd')
-      tags: actualTags
-      location: location
+module vdiModule '../shared-modules/virtualDesktop/main.bicep' = if (useSessionHostAsResearchVm) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'vdi'), 64)
+  params: {
+    resourceGroupName: replace(rgNamingStructure, '{rgname}', 'avd')
+    tags: actualTags
+    location: location
 
-      usePrivateLinkForHostPool: usePrivateEndpoints
-      privateEndpointSubnetId: usePrivateEndpoints ? networkModule.outputs.createdSubnets.privateEndpointSubnet.id : ''
-      privateLinkDnsZoneId: usePrivateEndpoints ? avdConnectionPrivateDnsZone.id : ''
+    usePrivateLinkForHostPool: usePrivateEndpoints
+    privateEndpointSubnetId: usePrivateEndpoints ? networkModule.outputs.createdSubnets.privateEndpointSubnet.id : ''
+    privateLinkDnsZoneId: usePrivateEndpoints ? avdConnectionPrivateDnsZone.id : ''
 
-      adminObjectId: adminEntraIdObjectId
-      deploymentNameStructure: deploymentNameStructure
-      desktopAppGroupFriendlyName: desktopAppGroupFriendlyName
-      logonType: logonType
-      namingStructure: replace(namingStructure, '{subWorkloadName}', 'avd')
-      roles: rolesModule.outputs.roles
-      userObjectId: researcherEntraIdObjectId
-      workspaceFriendlyName: workspaceFriendlyName
+    adminObjectId: adminEntraIdObjectId
+    deploymentNameStructure: deploymentNameStructure
+    desktopAppGroupFriendlyName: desktopAppGroupFriendlyName
+    logonType: logonType
+    namingStructure: replace(namingStructure, '{subWorkloadName}', 'avd')
+    roles: rolesModule.outputs.roles
+    userObjectId: researcherEntraIdObjectId
+    workspaceFriendlyName: workspaceFriendlyName
 
-      computeSubnetId: networkModule.outputs.createdSubnets.computeSubnet.id
+    computeSubnetId: networkModule.outputs.createdSubnets.computeSubnet.id
 
-      sessionHostLocalAdminUsername: sessionHostLocalAdminUsername
-      sessionHostLocalAdminPassword: sessionHostLocalAdminPassword
-      useCMK: useCMK
-      diskEncryptionSetId: diskEncryptionSetModule.outputs.id
-      sessionHostCount: sessionHostCount
+    sessionHostLocalAdminUsername: sessionHostLocalAdminUsername
+    sessionHostLocalAdminPassword: sessionHostLocalAdminPassword
+    useCMK: useCMK
+    diskEncryptionSetId: diskEncryptionSetModule.outputs.id
+    sessionHostCount: sessionHostCount
 
-      backupPolicyName: recoveryServicesVaultModule.outputs.backupPolicyName
-      recoveryServicesVaultId: recoveryServicesVaultModule.outputs.id
+    backupPolicyName: recoveryServicesVaultModule.outputs.backupPolicyName
+    recoveryServicesVaultId: recoveryServicesVaultModule.outputs.id
 
-      domainJoinPassword: domainJoinPassword
-      domainJoinUsername: domainJoinUsername
-      sessionHostNamePrefix: sessionHostNamePrefix
-      sessionHostSize: sessionHostSize
+    // TODO: Use activeDirectoryDomainInfo type
+    domainJoinPassword: domainJoinPassword
+    domainJoinUsername: domainJoinUsername
+    sessionHostNamePrefix: sessionHostNamePrefix
+    sessionHostSize: sessionHostSize
 
-      adDomainFqdn: adDomainFqdn
-      adOuPath: adOuPath
-    }
+    adDomainFqdn: adDomainFqdn
+    adOuPath: adOuPath
   }
+}
 
 // Store the file share connection string of the private storage account in Key Vault
 module privateStorageConnStringSecretModule './spoke-modules/security/keyVault-StorageAccountConnString.bicep' = {
@@ -568,6 +591,14 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
     debugRemoteIp: debugRemoteIp
 
     filesIdentityType: filesIdentityType
+    domainJoinSpokeAirlockStorageAccount: logonType == 'ad' && !isAirlockReviewCentralized
+    domainJoinInfo: storageAccountDomainJoinInfo
+
+    hubManagementVmName: hubManagementVmName
+    hubManagementVmResourceGroupName: hubManagementVmResourceGroupName
+    hubManagementVmSubscriptionId: hubManagementVmSubscriptionId
+    hubManagementVmUamiClientId: hubManagementVmUamiClientId
+    hubManagementVmUamiPrincipalId: hubManagementVmUamiPrincipalId
   }
 }
 

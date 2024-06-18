@@ -35,6 +35,24 @@ param storageAccountPrivateEndpointGroups array = [
 @allowed(['AADDS', 'AADKERB', 'None'])
 param filesIdentityType string
 
+// Required for AD join
+param domainJoin bool = false
+param domainJoinInfo activeDirectoryDomainInfo = {
+  adDomainFqdn: ''
+  domainJoinPassword: ''
+  domainJoinUsername: ''
+}
+param hubSubscriptionId string = ''
+param hubManagementRgName string = ''
+param hubManagementVmName string = ''
+param uamiPrincipalId string = ''
+param uamiClientId string = ''
+param roles object = {}
+// End required for AD join
+
+// Types
+import { activeDirectoryDomainInfo } from '../../../shared-modules/types/activeDirectoryDomainInfo.bicep'
+
 resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: keyVaultName
   scope: resourceGroup(keyVaultSubscriptionId, keyVaultResourceGroupName)
@@ -44,6 +62,20 @@ var privateDnsZonesResourceGroupIdSplit = split(privateDnsZonesResourceGroupId, 
 
 var privateDnsZonesSubscriptionId = privateDnsZonesResourceGroupIdSplit[2]
 var privateDnsZonesResourceGroupName = privateDnsZonesResourceGroupIdSplit[4]
+
+// var storageAccountContributorRoleDefinitionId = contains(roles, 'StorageAccountContributor')
+//   ? roles.StorageAccountContributor
+//   : ''
+
+module uamiRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-rg.bicep' = if (domainJoin && length(fileShareNames) > 0) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'uami-rg-rbac'), 64)
+  params: {
+    principalId: uamiPrincipalId
+    roleDefinitionId: roles.StorageAccountContributor
+    principalType: 'ServicePrincipal'
+    description: 'Role assignment for hub management VM to domain join storage account'
+  }
+}
 
 // Ensure the private DNS zones for storage exist and reference them
 resource hubPrivateDnsZoneResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
@@ -103,6 +135,33 @@ module storageAccountModule 'storageAccount.bicep' = {
     privateEndpointSubnetId: privateEndpointSubnetId
 
     filesIdentityType: filesIdentityType
+  }
+}
+
+resource hubManagementRg 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
+  name: hubManagementRgName
+  scope: subscription(hubSubscriptionId)
+}
+
+// Domain join to AD DS if needed, using the management VM in the hub
+module domainJoinModule 'domainJoin.bicep' = if (domainJoin && length(fileShareNames) > 0) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'st-adjoin'), 64)
+  scope: hubManagementRg
+  params: {
+    fileShareName: fileShareNames[0]
+    identityDomainName: domainJoinInfo.adDomainFqdn
+    identityServiceProvider: 'ADDS'
+    managedIdentityClientId: uamiClientId
+    ouStgPath: domainJoinInfo.adOuPath
+    storageAccountFqdn: storageAccountModule.outputs.primaryFileFqdn
+    storageAccountName: storageAccountModule.outputs.name
+    storageObjectsRgName: resourceGroup().name
+    storagePurpose: 'fslogix'
+    adminUserName: domainJoinInfo.domainJoinUsername
+    securityPrincipalName: 'none'
+    workloadSubsId: subscription().subscriptionId
+    hubManagementVmName: hubManagementVmName
+    adminUserPassword: domainJoinInfo.domainJoinPassword
   }
 }
 
