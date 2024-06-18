@@ -6,7 +6,7 @@ param identityServiceProvider string
 param workloadSubsId string
 param adminUserName string
 param useCustomOUPath string = 'true'
-param ouStgPath string
+param ouStgPath string = ''
 param fileShareName string
 param managedIdentityClientId string
 param securityPrincipalName string = 'none'

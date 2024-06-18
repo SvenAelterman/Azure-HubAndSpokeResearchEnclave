@@ -94,7 +94,6 @@ param sessionHostNamePrefix string = 'N/A'
 param sessionHostSize string = 'N/A'
 @description('If true, will configure the deployment of AVD to make the AVD session hosts usable as research VMs. This will give full desktop access, flow the AVD traffic through the firewall, etc.')
 param useSessionHostAsResearchVm bool = true
-
 @description('Entra ID object ID of the user or group (researchers) to assign permissions to access the AVD application groups and storage.')
 param researcherEntraIdObjectId string
 @description('Entra ID object ID of the admin user or group to assign permissions to administer the AVD session hosts, storage, etc.')
@@ -130,6 +129,7 @@ param complianceTarget string = 'NIST80053R5'
 param hubManagementVmId string = ''
 param hubManagementVmUamiPrincipalId string = ''
 param hubManagementVmUamiClientId string = ''
+
 param debugMode bool = false
 param debugRemoteIp string = ''
 param debugPrincipalId string = ''
@@ -429,12 +429,8 @@ module storageModule './spoke-modules/storage/main.bicep' = {
     // TODO: This needs additional refinement: specifying the domain info for AADKERB (guid, name)
     filesIdentityType: filesIdentityType
     domainJoin: logonType == 'ad'
-    domainJoinInfo: {
-      domainFqdn: adDomainFqdn
-      ouPath: storageAccountOuPath //adOuPath
-      username: domainJoinUsername
-      password: domainJoinPassword
-    }
+    domainJoinInfo: storageAccountDomainJoinInfo
+
     hubSubscriptionId: hubManagementVmSubscriptionId
     hubManagementRgName: hubManagementVmResourceGroupName
     hubManagementVmName: hubManagementVmName
@@ -442,6 +438,13 @@ module storageModule './spoke-modules/storage/main.bicep' = {
     uamiClientId: hubManagementVmUamiClientId
     roles: rolesModule.outputs.roles
   }
+}
+
+var storageAccountDomainJoinInfo = {
+  adDomainFqdn: adDomainFqdn
+  adOuPath: storageAccountOuPath
+  domainJoinUsername: domainJoinUsername
+  domainJoinPassword: domainJoinPassword
 }
 
 // Set blob and SMB permissions for group on private storage
@@ -502,6 +505,7 @@ module vdiModule '../shared-modules/virtualDesktop/main.bicep' = if (useSessionH
     backupPolicyName: recoveryServicesVaultModule.outputs.backupPolicyName
     recoveryServicesVaultId: recoveryServicesVaultModule.outputs.id
 
+    // TODO: Use activeDirectoryDomainInfo type
     domainJoinPassword: domainJoinPassword
     domainJoinUsername: domainJoinUsername
     sessionHostNamePrefix: sessionHostNamePrefix
@@ -587,6 +591,14 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
     debugRemoteIp: debugRemoteIp
 
     filesIdentityType: filesIdentityType
+    domainJoinSpokeAirlockStorageAccount: logonType == 'ad' && !isAirlockReviewCentralized
+    domainJoinInfo: storageAccountDomainJoinInfo
+
+    hubManagementVmName: hubManagementVmName
+    hubManagementVmResourceGroupName: hubManagementVmResourceGroupName
+    hubManagementVmSubscriptionId: hubManagementVmSubscriptionId
+    hubManagementVmUamiClientId: hubManagementVmUamiClientId
+    hubManagementVmUamiPrincipalId: hubManagementVmUamiPrincipalId
   }
 }
 
