@@ -79,7 +79,7 @@ param filesIdentityType string
 param adDomainFqdn string = ''
 @description('Optional. The OU path in LDAP notation to use when joining the session hosts.')
 param adOuPath string = ''
-@description('Optional. The AD OU to use for joined storage accounts. Defaults to the adOuPath.')
+@description('Optional. The OU Path in LDAP notation to use when joining the storage account. Defaults to the same OU as the session hosts.')
 param storageAccountOuPath string = adOuPath
 @description('Optional. The number of Azure Virtual Desktop session hosts to create in the pool. Defaults to 1.')
 param sessionHostCount int = 1
