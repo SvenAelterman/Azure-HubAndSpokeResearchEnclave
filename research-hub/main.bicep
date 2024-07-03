@@ -116,6 +116,12 @@ param existingPrivateDnsZonesResourceGroupId string = ''
 @description('The IP address of the main hub\'s network virtual appliance (NVA).')
 param mainHubNvaIp string = ''
 
+@description('The pool of IP address space for the entire research environment, including this hub and all its spokes.')
+param ipAddressPool array
+
+@description('The IP addresses of the domain controllers in the Active Directory domain. Required if using AD join.')
+param domainControllerIPAddresses array = []
+
 /*
  * Entra ID object IDs for role assignments
  */
@@ -252,6 +258,12 @@ module networkModule 'hub-modules/networking/main.bicep' = {
     firewallForcedTunnelNvaIP: mainHubNvaIp
 
     deployManagementSubnet: logonType == 'ad'
+
+    includeActiveDirectoryFirewallRules: logonType == 'ad'
+    domainControllerIPAddresses: domainControllerIPAddresses
+
+    includeDnsFirewallRules: length(customDnsIPs) > 0
+    ipAddressPool: ipAddressPool
   }
 }
 

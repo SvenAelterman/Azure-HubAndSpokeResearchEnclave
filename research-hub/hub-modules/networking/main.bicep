@@ -33,6 +33,11 @@ param firewallForcedTunnelNvaIP string = ''
 ])
 param firewallTier string = 'Basic'
 
+param includeActiveDirectoryFirewallRules bool = false
+param includeDnsFirewallRules bool = false
+param ipAddressPool array = []
+param domainControllerIPAddresses array = []
+
 param location string
 param tags object
 param deploymentTime string
@@ -213,6 +218,18 @@ module azureFirewallModule './azureFirewall.bicep' = {
     tags: tags
     location: location
     forcedTunneling: firewallForcedTunnel
+
+    includeActiveDirectoryRules: includeActiveDirectoryFirewallRules
+    includeDnsRules: includeDnsFirewallRules
+    ipAddressPool: ipAddressPool
+    dnsServerIPAddresses: customDnsIPs
+    domainControllerIPAddresses: domainControllerIPAddresses
+    includeManagementSubnetRules: deployManagementSubnet
+    managementSubnetRange: deployManagementSubnet
+      ? networkModule.outputs.createdSubnets.ManagementSubnet.addressPrefix
+      : ''
+    // TODO: AVD session host support in hub
+    //includeAvdSubnetRules: deployAvdSubnet
   }
 }
 

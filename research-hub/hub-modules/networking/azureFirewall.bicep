@@ -16,6 +16,14 @@ param firewallTier string = 'Basic'
 
 param location string = resourceGroup().location
 
+param includeActiveDirectoryRules bool = false
+param includeDnsRules bool = false
+param includeManagementSubnetRules bool = false
+param dnsServerIPAddresses array = []
+param domainControllerIPAddresses array = []
+param ipAddressPool array = []
+param managementSubnetRange string = ''
+
 var createManagementIPConfiguration = (firewallTier == 'Basic' || forcedTunneling)
 // Basic Firewall AND not forced tunneling requires two public IP addresses
 var publicIpCount = (firewallTier == 'Basic' && !forcedTunneling) ? 2 : 1
@@ -82,11 +90,65 @@ var defaultRuleCollectionGroups = {
   }
 }
 
+var activeDirectoryRuleCollectionGroup = includeActiveDirectoryRules && length(domainControllerIPAddresses) > 0
+  ? {
+      ActiveDirectory: {
+        rules: json(replace(
+          replace(
+            loadTextContent('../../azure-firewall-rules/azFwPolRuleColls-ActiveDirectory.jsonc'),
+            '"{{domainControllerIPAddresses}}"',
+            string(domainControllerIPAddresses)
+          ),
+          '"{{ipAddressPool}}"',
+          string(ipAddressPool)
+        ))
+        priority: 2100
+      }
+    }
+  : {}
+
+var dnsRuleCollectionGroup = includeDnsRules && length(dnsServerIPAddresses) > 0
+  ? {
+      DNS: {
+        rules: json(replace(
+          replace(
+            loadTextContent('../../azure-firewall-rules/azFwPolRuleColls-DNS.jsonc'),
+            '"{{dnsServerAddresses}}"',
+            string(dnsServerIPAddresses)
+          ),
+          '"{{ipAddressPool}}"',
+          string(ipAddressPool)
+        ))
+        priority: 2000
+      }
+    }
+  : {}
+
+var managementSubnetRuleCollectionGroup = includeManagementSubnetRules && length(managementSubnetRange) > 0
+  ? {
+      ManagementSubnet: {
+        rules: json(replace(
+          loadTextContent('../../azure-firewall-rules/azFwPolRuleColls-ManagementSubnet.jsonc'),
+          '{{managementSubnetRange}}',
+          managementSubnetRange
+        ))
+        priority: 5000
+      }
+    }
+  : {}
+
+var ruleCollectionGroupsAll = union(
+  defaultRuleCollectionGroups,
+  activeDirectoryRuleCollectionGroup,
+  dnsRuleCollectionGroup,
+  managementSubnetRuleCollectionGroup
+)
+
 // LATER: Divide into optional rule collections: AzurePlatform, AVDRDWeb (rename!), ResearchDataSources (?)
 
 @batchSize(1) // Do not process more than one rule collection group at a time
 resource ruleCollectionGroups 'Microsoft.Network/firewallPolicies/ruleCollectionGroups@2022-07-01' = [
-  for group in items(defaultRuleCollectionGroups): {
+  for group in items(ruleCollectionGroupsAll): {
     name: group.key
     parent: firewallPolicy
     properties: {

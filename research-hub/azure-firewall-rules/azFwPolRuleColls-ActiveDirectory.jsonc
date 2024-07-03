@@ -1,0 +1,32 @@
+/*
+ * Azure Firewall Rule Collection for Active Directory
+ */
+[
+  {
+    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+    "action": {
+      "type": "Allow"
+    },
+    "rules": [
+      {
+        "ruleType": "NetworkRule",
+        "name": "DomainControllers",
+        "ipProtocols": ["TCP", "UDP", "ICMP"],
+        "sourceAddresses": "{{ipAddressPool}}",
+        "destinationAddresses": "{{domainControllerIPAddresses}}",
+        "destinationPorts": [
+          "123", // NTP
+          "135", // RPC
+          "389", // LDAP
+          "445", // SMB
+          "636", // LDAPS
+          "3268-3269", // Global Catalog
+          "9389", // ADWS
+          "49152-65535" // RCP high TCP ports
+        ]
+      }
+    ],
+    "name": "ActiveDirectory",
+    "priority": 150
+  }
+]

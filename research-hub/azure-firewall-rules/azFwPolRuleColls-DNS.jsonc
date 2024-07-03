@@ -1,0 +1,23 @@
+/*
+ * Azure Firewall Rule Collection for custom DNS servers
+ */
+[
+  {
+    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+    "action": {
+      "type": "Allow"
+    },
+    "rules": [
+      {
+        "ruleType": "NetworkRule",
+        "name": "DNS",
+        "ipProtocols": ["TCP", "UDP"],
+        "sourceAddresses": "{{ipAddressPool}}",
+        "destinationAddresses": "{{dnsServerAddresses}}",
+        "destinationPorts": ["53"]
+      }
+    ],
+    "name": "DNS",
+    "priority": 150
+  }
+]
