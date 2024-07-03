@@ -44,22 +44,8 @@ param deploymentNameStructure string
 param backupPolicyName string
 param recoveryServicesVaultId string
 
-type activeDirectoryDomainInfo = {
-  @secure()
-  domainJoinPassword: string
-  @secure()
-  domainJoinUsername: string
-  adDomainFqdn: string
-  adOuPath: string?
-}
-
-type imageReferenceType = {
-  publisher: string?
-  offer: string?
-  version: string?
-  sku: string?
-  id: string?
-}
+import { activeDirectoryDomainInfo } from '../types/activeDirectoryDomainInfo.bicep'
+import { imageReferenceType } from '../types/imageReferenceType.bicep'
 
 // Nested templates location (not used here, just for reference)
 // Commercial: https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/armtemplates/Hostpool_1.0.02544.255/nestedTemplates/
@@ -112,6 +98,7 @@ resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [
 
 var computerNames = [for i in range(0, vmCount): '${vmNamePrefix}-${i}']
 
+// TODO: Use virtualMachine.bicep shared module
 // Create the session hosts
 resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [
   for i in range(0, vmCount): {

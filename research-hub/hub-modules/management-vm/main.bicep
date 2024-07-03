@@ -43,7 +43,7 @@ param recoveryServicesVaultId string = ''
 
 param deploymentTime string = utcNow()
 
-import { activeDirectoryDomainInfo } from '../../../shared-modules/compute/virtualMachine.bicep'
+import { activeDirectoryDomainInfo } from '../../../shared-modules/types/activeDirectoryDomainInfo.bicep'
 
 type imageReferenceType = {
   publisher: string?
