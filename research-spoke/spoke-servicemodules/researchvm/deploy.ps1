@@ -18,7 +18,7 @@
 .EXAMPLE
     ./deploy.ps1 -TemplateParameterFile '.\main.bicepparam' -TargetSubscriptionId '00000000-0000-0000-0000-000000000000' -Location 'eastus' 
 
-    .EXAMPLE
+.EXAMPLE
     ./deploy.ps1 '.\main.prj.bicepparam' '00000000-0000-0000-0000-000000000000' 'eastus'
 #>
 
@@ -74,7 +74,7 @@ $DeploymentResult = New-AzResourceGroupDeployment @CmdLetParameters
 if ($DeploymentResult.ProvisioningState -eq 'Succeeded') {
     Write-Host "🔥 Deployment succeeded."
 
-    $DeploymentResult.Outputs
+    $DeploymentResult.Outputs | Format-Table -Property Key, @{Name = 'Value'; Expression = { $_.Value.Value } }
 }
 else {
     $DeploymentResult

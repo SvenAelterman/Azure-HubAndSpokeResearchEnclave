@@ -44,14 +44,7 @@ param recoveryServicesVaultId string
 param deploymentTime string = utcNow()
 
 import { activeDirectoryDomainInfo } from '../../../shared-modules/types/activeDirectoryDomainInfo.bicep'
-
-type imageReferenceType = {
-  publisher: string?
-  offer: string?
-  version: string?
-  sku: string?
-  id: string?
-}
+import { imageReferenceType } from '../../../shared-modules/types/imageReferenceType.bicep'
 
 var intuneMdmId = '0000000a-0000-0000-c000-000000000000'
 var deploymentNameStructure = 'researchvm-{rtype}-${deploymentTime}'
@@ -96,6 +89,7 @@ resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [
   }
 ]
 
+// TODO: Use virtualMachine.bicep
 // Create the virtual machines
 resource virtualMachines 'Microsoft.Compute/virtualMachines@2023-03-01' = [
   for i in range(0, vmCount): {
