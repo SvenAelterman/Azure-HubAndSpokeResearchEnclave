@@ -14,7 +14,7 @@ param identityType identity
 
 param deploymentNameStructure string
 
-@description('Required when logonType is ad')
+@description('Required when logonType is "ad".')
 param domainJoinInfo activeDirectoryDomainInfo = {
   domainJoinPassword: ''
   domainJoinUsername: ''
@@ -34,18 +34,8 @@ param recoveryServicesVaultId string = ''
 
 param tags object
 
-@export()
-type activeDirectoryDomainInfo = {
-  @secure()
-  domainJoinPassword: string
-  @secure()
-  domainJoinUsername: string
-  adDomainFqdn: string
-  adOuPath: string?
-}
-
-@export()
-type identity = 'None' | 'SystemAssigned' | 'UserAssigned' | 'SystemAssigned, UserAssigned'
+import { activeDirectoryDomainInfo } from '../types/activeDirectoryDomainInfo.bicep'
+import { identity } from '../types/identity.bicep'
 
 var intuneMdmId = '0000000a-0000-0000-c000-000000000000'
 
@@ -220,5 +210,28 @@ module backupItems '../recovery/rsvProtectedItem.bicep' = if (!empty(backupPolic
     backupPolicyName: backupPolicyName
     recoveryServicesVaultId: recoveryServicesVaultId
     virtualMachineId: virtualMachine.id
+  }
+}
+
+// TODO: Install IaaSAntimalware extension
+resource antimalwareExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
+  name: 'IaaSAntimalware'
+  parent: virtualMachine
+  location: location
+  properties: {
+    publisher: 'Microsoft.Azure.Security'
+    type: 'IaaSAntimalware'
+    typeHandlerVersion: '1.3'
+    autoUpgradeMinorVersion: true
+    settings: {
+      AntimalwareEnabled: true
+      RealtimeProtectionEnabled: true
+      ScheduledScanSettings: {
+        isEnabled: true
+        scanType: 'Quick'
+        day: '7'
+        time: '120'
+      }
+    }
   }
 }
