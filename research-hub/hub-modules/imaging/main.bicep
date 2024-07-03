@@ -12,12 +12,13 @@ param enableAvmTelemetry bool = true
 param sampleImageName string = 'sample'
 
 var customRoleName = 'Azure Image Builder Service Image Creation'
+var customRoleGuid = guid(resourceGroup().id, customRoleName)
 
 // Create a custom role that's allowed to create images
 resource aibRoleDefinition 'Microsoft.Authorization/roleDefinitions@2022-04-01' = {
-  name: guid(resourceGroup().id, customRoleName)
+  name: customRoleGuid
   properties: {
-    roleName: customRoleName
+    roleName: '${customRoleName} (${customRoleGuid})'
     description: 'Image Builder access to create resources for the image build'
     assignableScopes: [resourceGroup().id]
     permissions: [
