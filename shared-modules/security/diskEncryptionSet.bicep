@@ -47,17 +47,18 @@ resource kvRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
   scope: subscription(kvSubscriptionId)
 }
 
-// Grant a role to the Disk Encryption Set on the Key Vault if using system-assigned identity
-module kvRbacModule '../../module-library/roleAssignments/roleAssignment-kv.bicep' =
-  if (useSystemAssignedManagedIdentityOnly) {
-    name: take(replace(deploymentNameStructure, '{rtype}', 'kv-des-rbac'), 64)
-    scope: kvRg
-    params: {
-      kvName: keyVaultName
-      principalId: diskEncryptionSet.identity.principalId
-      roleDefinitionId: kvRoleDefinitionId
-      principalType: 'ServicePrincipal'
-    }
+// Grant a role to the Disk Encryption Set on the Key Vault
+// This appears to always be required?
+module kvRbacModule '../../module-library/roleAssignments/roleAssignment-kv.bicep' = {
+  //if (useSystemAssignedManagedIdentityOnly) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'kv-des-rbac'), 64)
+  scope: kvRg
+  params: {
+    kvName: keyVaultName
+    principalId: diskEncryptionSet.identity.principalId
+    roleDefinitionId: kvRoleDefinitionId
+    principalType: 'ServicePrincipal'
   }
+}
 
 output id string = diskEncryptionSet.id
