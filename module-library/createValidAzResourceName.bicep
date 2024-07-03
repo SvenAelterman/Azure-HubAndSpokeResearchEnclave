@@ -88,6 +88,8 @@ var shortLocations = {
   eastus: 'eus'
   eastus2: 'eus2'
   usgovvirginia: 'gva'
+  // TODO: This should be inc
+  centralindia: 'ci'
 }
 
 var maxLength = Defs[resourceType].maxLength
