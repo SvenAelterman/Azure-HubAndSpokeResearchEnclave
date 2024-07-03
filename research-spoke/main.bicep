@@ -3,10 +3,6 @@ targetScope = 'subscription'
 //------------------------------ START PARAMETERS ------------------------------
 
 @description('The Azure region where the spoke will be deployed.')
-@allowed([
-  'usgovvirginia'
-  'eastus'
-])
 param location string
 @description('The name of the research project for the spoke.')
 param workloadName string
@@ -382,6 +378,7 @@ module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bic
     deploymentNameStructure: deploymentNameStructure
     kvRoleDefinitionId: rolesModule.outputs.roles.KeyVaultCryptoServiceEncryptionUser
   }
+
   dependsOn: [uamiKvRbacModule]
 }
 
@@ -629,3 +626,8 @@ resource avdConnectionPrivateDnsZone 'Microsoft.Network/privateDnsZones@2020-06-
   name: 'privatelink.wvd.microsoft.com'
   scope: hubDnsZoneResourceGroup
 }
+
+output recoveryServicesVaultId string = recoveryServicesVaultModule.outputs.id
+output backupPolicyName string = recoveryServicesVaultModule.outputs.backupPolicyName
+output diskEncryptionSetId string = diskEncryptionSetModule.outputs.id
+output computeSubnetId string = networkModule.outputs.createdSubnets.computeSubnet.id
