@@ -88,6 +88,7 @@ resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@
     backupManagementType: 'AzureIaasVM'
 
     instantRPDetails: {
+      // TODO: Follow naming convention
       azureBackupRGNamePrefix: 'rg-backup-${location}-${workloadName}-'
     }
 
@@ -111,7 +112,7 @@ resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@
       retentionPolicyType: 'LongTermRetentionPolicy'
 
       dailySchedule: {
-        retentionTimes: [ backupTime ]
+        retentionTimes: [backupTime]
         retentionDuration: {
           count: 8
           durationType: 'Days'
@@ -119,26 +120,28 @@ resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@
       }
 
       weeklySchedule: {
-        retentionTimes: [ backupTime ]
+        retentionTimes: [backupTime]
         retentionDuration: {
           count: 6
           durationType: 'Weeks'
         }
-        daysOfTheWeek: [ 'Sunday' ]
+        daysOfTheWeek: ['Sunday']
       }
 
       monthlySchedule: {
-        retentionTimes: [ backupTime ]
+        retentionTimes: [backupTime]
         retentionDuration: {
           count: 13
           durationType: 'Months'
         }
         retentionScheduleFormatType: 'Daily'
         retentionScheduleDaily: {
-          daysOfTheMonth: [ {
+          daysOfTheMonth: [
+            {
               date: 1
               isLast: false
-            } ]
+            }
+          ]
         }
         retentionScheduleWeekly: null
       }
