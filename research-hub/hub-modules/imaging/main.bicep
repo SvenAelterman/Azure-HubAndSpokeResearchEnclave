@@ -99,7 +99,7 @@ module computeGalleryNameModule '../../../module-library/createValidAzResourceNa
 module computeGalleryModule 'br/public:avm/res/compute/gallery:0.3.1' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'gal'), 64)
   params: {
-    name: computeGalleryNameModule.outputs.shortName
+    name: computeGalleryNameModule.outputs.validName
     location: location
 
     images: [

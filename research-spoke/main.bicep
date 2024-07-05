@@ -310,7 +310,7 @@ module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
   scope: securityRg
   params: {
     location: location
-    keyVaultName: keyVaultNameModule.outputs.shortName
+    keyVaultName: keyVaultNameModule.outputs.validName
     namingStructure: namingStructureNoSub
     // Only allow remote IP addresses in debug mode
     allowedIps: debugMode

@@ -265,7 +265,7 @@ module publicStorageAccountNameModule '../../../module-library/createValidAzReso
 module publicStorageAccountModule '../storage/storageAccount.bicep' = {
   name: replace(deploymentNameStructure, '{rtype}', 'st-pub')
   params: {
-    storageAccountName: publicStorageAccountNameModule.outputs.shortName
+    storageAccountName: publicStorageAccountNameModule.outputs.validName
     location: location
     namingStructure: namingStructure
     containerNames: publicStorageAccountContainerNames

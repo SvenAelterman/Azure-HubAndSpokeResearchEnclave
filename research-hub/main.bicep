@@ -298,7 +298,7 @@ module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
   params: {
     location: location
     deploymentNameStructure: deploymentNameStructure
-    keyVaultName: keyVaultNameModule.outputs.shortName
+    keyVaultName: keyVaultNameModule.outputs.validName
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'kv')
     tags: actualTags
     useCMK: useCMK
@@ -508,6 +508,8 @@ module managementVmModule './hub-modules/management-vm/main.bicep' = if (logonTy
     vmLocalAdminUsername: sessionHostLocalAdminUsername
     vmLocalAdminPassword: sessionHostLocalAdminPassword
 
+    // LATER: Adjust number of characters taken from the workloadName based on the length of the string value of the sequence number
+    // LATER: Allow customization of the prefix mgmt-
     vmNamePrefix: 'mgmt-${take(workloadName,9)}${take(string(sequence),1)}'
 
     domainJoinInfo: logonType == 'ad'
