@@ -1,7 +1,8 @@
 param virtualMachineName string
 param location string = resourceGroup().location
 param vmSize string
-param vmComputerNamePrefix string
+@description('The operating system\'s host name.')
+param vmHostName string
 @secure()
 param vmLocalAdminUsername string
 @secure()
@@ -11,6 +12,7 @@ param imageReference object
 param nicId string
 param uamiId string = ''
 param identityType identity
+param availabilitySetId string = ''
 
 param deploymentNameStructure string
 
@@ -39,7 +41,9 @@ import { identity } from '../types/identity.bicep'
 
 var intuneMdmId = '0000000a-0000-0000-c000-000000000000'
 
-// TODO: DRY by centralizing the virtual machine resource creation
+// TODO: Move NIC creation to this module
+
+// Create the virtual machine resource
 resource virtualMachine 'Microsoft.Compute/virtualMachines@2023-03-01' = {
   name: virtualMachineName
   location: location
@@ -51,7 +55,7 @@ resource virtualMachine 'Microsoft.Compute/virtualMachines@2023-03-01' = {
       vmSize: vmSize
     }
     osProfile: {
-      computerName: vmComputerNamePrefix
+      computerName: vmHostName
       adminUsername: vmLocalAdminUsername
       adminPassword: vmLocalAdminPassword
       windowsConfiguration: osType == 'Windows'
@@ -98,6 +102,11 @@ resource virtualMachine 'Microsoft.Compute/virtualMachines@2023-03-01' = {
         enabled: false
       }
     }
+    availabilitySet: !empty(availabilitySetId)
+      ? {
+          id: availabilitySetId
+        }
+      : null
   }
   identity: {
     type: identityType
@@ -106,6 +115,27 @@ resource virtualMachine 'Microsoft.Compute/virtualMachines@2023-03-01' = {
           '${uamiId}': {}
         }
       : null
+  }
+}
+
+// HACK: 2024-07-05: .cloud TLDs (and maybe some others?) don't work by default due to reddog.microsoft.com as the DNS suffix for the connection
+// Set the computer's primary DNS suffix to the AD domain FQDN
+resource primaryDnsSuffixExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = if (logonType == 'ad' && endsWith(
+  domainJoinInfo.adDomainFqdn,
+  '.cloud'
+)) {
+  name: 'SetPrimaryDnsSuffixScript'
+  parent: virtualMachine
+  location: location
+  tags: tags
+  properties: {
+    publisher: 'Microsoft.Compute'
+    type: 'CustomScriptExtension'
+    typeHandlerVersion: '1.10'
+    autoUpgradeMinorVersion: true
+    settings: {
+      commandToExecute: 'wmic nicconfig call SetDNSSuffixSearchOrder ${domainJoinInfo.adDomainFqdn}'
+    }
   }
 }
 
@@ -151,7 +181,7 @@ resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023-
       password: domainJoinInfo.domainJoinPassword
     }
   }
-  dependsOn: [windowsGuestAttestationExtension, windowsVMGuestConfigExtension]
+  dependsOn: [primaryDnsSuffixExtension, windowsGuestAttestationExtension, windowsVMGuestConfigExtension]
 }
 
 // Deploy Windows Attestation, for boot integrity monitoring
@@ -204,7 +234,7 @@ var rsvRgName = !empty(recoveryServicesVaultId) ? split(recoveryServicesVaultId,
 // Create a backup item for each session host
 // This must be deployed in a separate module because it's in a different resource group
 module backupItems '../recovery/rsvProtectedItem.bicep' = if (!empty(backupPolicyName) && !empty(recoveryServicesVaultId)) {
-  name: replace(deploymentNameStructure, '{rtype}', '${vmComputerNamePrefix}-backup')
+  name: replace(deploymentNameStructure, '{rtype}', '${vmHostName}-backup')
   scope: resourceGroup(rsvRgName)
   params: {
     backupPolicyName: backupPolicyName
@@ -213,7 +243,7 @@ module backupItems '../recovery/rsvProtectedItem.bicep' = if (!empty(backupPolic
   }
 }
 
-// TODO: Install IaaSAntimalware extension
+// Install IaaSAntimalware extension
 resource antimalwareExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
   name: 'IaaSAntimalware'
   parent: virtualMachine
@@ -235,3 +265,7 @@ resource antimalwareExtension 'Microsoft.Compute/virtualMachines/extensions@2023
     }
   }
 }
+
+// LATER: Deploy NVIDIA or AMD drivers if needed, based on vmSize
+
+output id string = virtualMachine.id

@@ -171,7 +171,7 @@ var resourceNamingStructure = replace(
 )
 var resourceNamingStructureNoSub = replace(resourceNamingStructure, '-{subWorkloadName}', '')
 var rgNamingStructure = replace(resourceNamingStructure, '{rtype}', 'rg')
-var deploymentNameStructure = '${workloadName}-{rtype}-${deploymentTime}'
+var deploymentNameStructure = '${workloadName}-${sequenceFormatted}-{rtype}-${deploymentTime}'
 
 var dateCreatedTag = addAutoDateCreatedTag
   ? {
@@ -510,7 +510,7 @@ module managementVmModule './hub-modules/management-vm/main.bicep' = if (logonTy
 
     // LATER: Adjust number of characters taken from the workloadName based on the length of the string value of the sequence number
     // LATER: Allow customization of the prefix mgmt-
-    vmNamePrefix: 'mgmt-${take(workloadName,9)}${take(string(sequence),1)}'
+    vmNamePrefix: 'mgmt-${take(workloadName,8)}${take(string(sequence),2)}'
 
     domainJoinInfo: logonType == 'ad'
       ? {
@@ -535,7 +535,7 @@ output hubPrivateDnsZonesResourceGroupId string = empty(existingPrivateDnsZonesR
   ? networkRg.id
   : existingPrivateDnsZonesResourceGroupId
 
-//output managementVmUamiId string = managementVmModule.outputs.uamiId
+output managementVmId string = managementVmModule.outputs.vmId
 output managementVmUamiPrincipalId string = managementVmModule.outputs.uamiPrincipalId
 output managementVmUamiClientId string = managementVmModule.outputs.uamiClientId
 
