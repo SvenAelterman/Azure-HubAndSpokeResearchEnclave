@@ -131,7 +131,7 @@ var AvdSubnet = deployAvdSubnet
   ? {
       AvdSubnet: {
         serviceEndpoints: []
-        routes: [] // Routes through the firewall will be added later, but we create the route table here
+        routes: [] // Routes through the firewall will be added later, but we create the route table resource here
         securityRules: []
         delegation: ''
         order: 9 // The tenth /27
@@ -144,7 +144,7 @@ var ManagementSubnet = deployManagementSubnet
   ? {
       ManagementSubnet: {
         serviceEndpoints: []
-        routes: [] // Routes through the firewall will be added later, but we create the route table here
+        routes: [] // Routes through the firewall will be added later, but we create the route table resource here
         securityRules: []
         order: 11 // The twelfth /27
         subnetCidr: 27
