@@ -156,7 +156,7 @@ resource entraIDJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023
         }
       : null
   }
-  dependsOn: [windowsGuestAttestationExtension, windowsVMGuestConfigExtension]
+  dependsOn: [windowsGuestAttestationExtension, windowsVMGuestConfigExtension, antimalwareExtension]
 }
 
 // Domain join the session hosts to Active Directory, if specified
@@ -181,7 +181,12 @@ resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023-
       password: domainJoinInfo.domainJoinPassword
     }
   }
-  dependsOn: [primaryDnsSuffixExtension, windowsGuestAttestationExtension, windowsVMGuestConfigExtension]
+  dependsOn: [
+    primaryDnsSuffixExtension
+    windowsGuestAttestationExtension
+    windowsVMGuestConfigExtension
+    antimalwareExtension
+  ]
 }
 
 // Deploy Windows Attestation, for boot integrity monitoring
@@ -241,6 +246,8 @@ module backupItems '../recovery/rsvProtectedItem.bicep' = if (!empty(backupPolic
     recoveryServicesVaultId: recoveryServicesVaultId
     virtualMachineId: virtualMachine.id
   }
+
+  dependsOn: [entraIDJoinExtension, domainJoinExtension]
 }
 
 // Install IaaSAntimalware extension

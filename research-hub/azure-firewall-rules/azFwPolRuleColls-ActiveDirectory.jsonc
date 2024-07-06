@@ -15,6 +15,7 @@
         "sourceAddresses": "{{ipAddressPool}}",
         "destinationAddresses": "{{domainControllerIPAddresses}}",
         "destinationPorts": [
+          "88", // Kerberos
           "123", // NTP
           "135", // RPC
           "389", // LDAP
