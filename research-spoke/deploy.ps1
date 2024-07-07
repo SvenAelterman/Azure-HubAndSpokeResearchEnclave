@@ -15,10 +15,16 @@
 .PARAMETER Location
     The Azure region to deploy the resources to.
 
+.PARAMETER Environment
+    The Azure environment (Public, Government, etc.) to deploy the resources to. Default is 'AzureCloud'.
+
+.PARAMETER DeleteJsonParameterFileAfterDeployment
+    A switch to delete the JSON parameter file after the deployment. Default is $true.
+
 .EXAMPLE
     ./deploy.ps1 -TemplateParameterFile '.\main.prj.bicepparam' -TargetSubscriptionId '00000000-0000-0000-0000-000000000000' -Location 'eastus' 
 
-    .EXAMPLE
+.EXAMPLE
     ./deploy.ps1 '.\main.prj.bicepparam' '00000000-0000-0000-0000-000000000000' 'eastus'
 #>
 
@@ -35,7 +41,9 @@ Param(
     [Parameter(Mandatory, Position = 3)]
     [string]$Location,
     [Parameter(Position = 4)]
-    [string]$Environment = 'AzureCloud'
+    [string]$Environment = 'AzureCloud',
+    [Parameter()]
+    [bool]$DeleteJsonParameterFileAfterDeployment = $true
 )
 
 # Define common parameters for the New-AzDeployment cmdlet
@@ -78,6 +86,11 @@ $DeploymentResult = New-AzDeployment @CmdLetParameters
 if ($DeploymentResult.ProvisioningState -eq 'Succeeded') {
     Write-Host "🔥 Deployment succeeded."
 
+    if($DeleteJsonParameterFileAfterDeployment) {
+        Write-Verbose "Deleting template parameter JSON file '$TemplateParameterJsonFile'."
+        Remove-Item -Path $TemplateParameterJsonFile -Force
+    }
+    
     $DeploymentResult.Outputs | Format-Table -Property Key, @{Name = 'Value'; Expression = { $_.Value.Value } }
 }
 else {
