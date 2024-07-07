@@ -99,6 +99,7 @@ var activeDirectoryRuleCollectionGroup = includeActiveDirectoryRules && length(d
             '"{{domainControllerIPAddresses}}"',
             string(domainControllerIPAddresses)
           ),
+          // TODO: Create IP Group for the pool
           '"{{ipAddressPool}}"',
           string(ipAddressPool)
         ))
@@ -116,6 +117,7 @@ var dnsRuleCollectionGroup = includeDnsRules && length(dnsServerIPAddresses) > 0
             '"{{dnsServerAddresses}}"',
             string(dnsServerIPAddresses)
           ),
+          // TODO: Use IP Group for the pool
           '"{{ipAddressPool}}"',
           string(ipAddressPool)
         ))
@@ -129,6 +131,7 @@ var managementSubnetRuleCollectionGroup = includeManagementSubnetRules && length
       ManagementSubnet: {
         rules: json(replace(
           loadTextContent('../../azure-firewall-rules/azFwPolRuleColls-ManagementSubnet.jsonc'),
+          // TODO: Create IP Group for the management subnet
           '{{managementSubnetRange}}',
           managementSubnetRange
         ))
