@@ -2,10 +2,13 @@ param namingConvention string
 param environment string
 param sequenceFormatted string
 param namingStructure string
+param deploymentNameStructure string
 param workloadName string
-param userAssignedIdentityId string
 param encryptionKeyUri string
 param useCMK bool
+param roles object
+param keyVaultResourceGroupName string
+param keyVaultName string
 
 param debugMode bool = false
 
@@ -13,8 +16,15 @@ param location string = resourceGroup().location
 param tags object
 param storageType string = 'GeoRedundant'
 
+var vaultName = replace(namingStructure, '{rtype}', 'rsv')
+
+resource keyVaultResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
+  name: keyVaultResourceGroupName
+  scope: subscription()
+}
+
 resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2023-06-01' = {
-  name: replace(namingStructure, '{rtype}', 'rsv')
+  name: vaultName
   location: location
   tags: tags
   sku: {
@@ -23,10 +33,7 @@ resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2023-06-01' = 
   }
 
   identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${userAssignedIdentityId}': {}
-    }
+    type: 'SystemAssigned'
   }
 
   properties: {
@@ -68,12 +75,23 @@ resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2023-06-01' = 
             keyUri: encryptionKeyUri
           }
           kekIdentity: {
-            useSystemAssignedIdentity: false
-            userAssignedIdentity: userAssignedIdentityId
+            useSystemAssignedIdentity: true
           }
           infrastructureEncryption: 'Enabled'
         }
       : null
+  }
+}
+
+// Create a role assignment on the Key Vault for the system-assigned managed identity of the vault
+module keyVaultRoleAssignment '../../module-library/roleAssignments/roleAssignment-kv.bicep' = if (useCMK) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'rsv-kv-rbac'), 80)
+  scope: keyVaultResourceGroup
+  params: {
+    kvName: keyVaultName
+    principalId: recoveryServicesVault.identity.principalId
+    roleDefinitionId: roles.KeyVaultCryptoUser
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -108,7 +126,11 @@ var backupTime = '2023-12-31T08:00:00.000Z'
 // Break up the naming convention on the sequence placeholder to use for the backup RG name
 var processNamingConventionPlaceholders = replace(
   replace(
-    replace(replace(replace(namingConvention, '{workloadName}', workloadName), '{rtype}', 'rg'), '{loc}', location),
+    replace(
+      replace(replace(namingConvention, '{workloadName}', workloadName), '{rtype}', 'rg-backup'),
+      '{loc}',
+      location
+    ),
     '{env}',
     environment
   ),
@@ -119,6 +141,7 @@ var splitNamingConvention = split(processNamingConventionPlaceholders, '{seq}')
 var azureBackupRGNamePrefix = '${splitNamingConvention[0]}${sequenceFormatted}-'
 var azureBackupRGNameSuffix = length(splitNamingConvention) > 1 ? splitNamingConvention[1] : ''
 
+// LATER: Parameterize backup policy values
 resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@2023-06-01' = {
   name: 'EnhancedPolicy-${workloadName}-${sequenceFormatted}'
   parent: recoveryServicesVault
@@ -126,7 +149,7 @@ resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@
     backupManagementType: 'AzureIaasVM'
 
     instantRPDetails: {
-      // TODO: Follow naming convention
+      // Following the naming convention of the other resource groups
       azureBackupRGNamePrefix: azureBackupRGNamePrefix
       azureBackupRGNameSuffix: azureBackupRGNameSuffix
     }
@@ -148,7 +171,6 @@ resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@
     }
 
     retentionPolicy: {
-      // LATER: Parameterize RSV retention policy
       retentionPolicyType: 'LongTermRetentionPolicy'
 
       dailySchedule: {
@@ -201,6 +223,7 @@ resource lock 'Microsoft.Authorization/locks@2020-05-01' = if (!debugMode) {
 }
 
 output id string = recoveryServicesVault.id
+output name string = recoveryServicesVault.name
 output backupPolicyName string = enhancedBackupPolicy.name
 
 // For debug purposes only

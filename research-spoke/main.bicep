@@ -22,7 +22,7 @@ param environment string = 'dev'
 param tags object = {}
 @description('The deployment sequence. Each new sequence number will create a new deployment.')
 param sequence int = 1
-@description('The naming convention to use for Azure resource names. Can contain placeholders for {rtype}, {workloadName}, {location}, {env}, and {seq}')
+@description('The naming convention to use for Azure resource names. Can contain placeholders for {rtype}, {workloadName}, {location}, {env}, and {seq}. The only supported segment separator is \'-\'.')
 param namingConvention string = '{workloadName}-{subWorkloadName}-{env}-{rtype}-{loc}-{seq}'
 
 param deploymentTime string = utcNow()
@@ -149,7 +149,7 @@ var useCMK = bool(complianceFeatureMap[complianceTarget].useCMK)
 
 var actualTags = union(defaultTags, tags)
 
-var deploymentNameStructure = '${workloadName}-{rtype}-${deploymentTime}'
+var deploymentNameStructure = '${workloadName}-${sequenceFormatted}-{rtype}-${deploymentTime}'
 // Naming structure only needs the resource type ({rtype}) and sub-workload name ({subWorkloadName}) replaced
 var namingStructure = replace(
   replace(
@@ -196,13 +196,6 @@ resource securityRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   location: location
   tags: actualTags
 }
-
-// resource avdRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
-//   //if (useSessionHostAsResearchVm) {
-//   name: replace(rgNamingStructure, '{rgname}', 'avd')
-//   location: location
-//   tags: actualTags
-// }
 
 resource storageRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
   name: replace(rgNamingStructure, '{rgname}', 'storage')
@@ -273,6 +266,7 @@ var allPrivateLinkDnsZoneNames = loadJsonContent('../shared-modules/dns/allPriva
 
 // Link the Private Link DNS zones in the hub to this virtual network, if not using custom DNS IPs.
 // If using custom DNS IPs, then the implication is that the custom DNS server knows how to resolve the private DNS zones.
+// This could be simplified (perhaps) by using a Azure Private DNS Resolver service in the research hub if not using custom DNS.
 module privateLinkDnsZoneLinkModule '../shared-modules/dns/privateDnsZoneVNetLink.bicep' = [
   for (zoneName, i) in allPrivateLinkDnsZoneNames: if (length(customDnsIps) == 0) {
     name: take(replace(deploymentNameStructure, '{rtype}', 'dns-link-${i}'), 64)
@@ -306,7 +300,7 @@ module keyVaultNameModule '../module-library/createValidAzResourceName.bicep' = 
 
 // Create a Key Vault for the customer-managed keys and more
 module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'kv'), 64)
+  name: take(replace(deploymentNameStructure, '{rtype}', 'keyVault'), 64)
   scope: securityRg
   params: {
     location: location
@@ -365,7 +359,7 @@ module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bic
 
 // Create the disk encryption set with system-assigned MI and grant access to Key Vault
 module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bicep' = if (useCMK) {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'des'), 64)
+  name: take(replace(deploymentNameStructure, '{rtype}', 'diskEnc'), 64)
   scope: securityRg
   params: {
     keyVaultId: keyVaultModule.outputs.id
@@ -382,6 +376,7 @@ module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bic
   dependsOn: [uamiKvRbacModule]
 }
 
+// TODO: Split once into var and re-use var
 var hubManagementVmSubscriptionId = split(hubManagementVmId, '/')[2]
 var hubManagementVmResourceGroupName = split(hubManagementVmId, '/')[4]
 var hubManagementVmName = split(hubManagementVmId, '/')[8]
@@ -423,7 +418,7 @@ module storageModule './spoke-modules/storage/main.bicep' = {
       fileShareNames.userProfiles
     ]
 
-    // TODO: This needs additional refinement: specifying the domain info for AADKERB (guid, name)
+    // TODO: This needs additional refinement: specifying the AD domain info for AADKERB (guid, name)
     filesIdentityType: filesIdentityType
     domainJoin: logonType == 'ad'
     domainJoinInfo: storageAccountDomainJoinInfo
@@ -601,16 +596,26 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 
 // Create a Recovery Services Vault and default backup policy
 module recoveryServicesVaultModule '../shared-modules/recovery/recoveryServicesVault.bicep' = {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'rsv'), 64)
+  name: take(replace(deploymentNameStructure, '{rtype}', 'recovery'), 64)
   scope: backupRg
   params: {
     location: location
     tags: actualTags
-    // TODO: Only when UseCMK
-    encryptionKeyUri: kvEncryptionKeys.rsv.keyUri
-    namingConvention: namingStructureNoSub
-    userAssignedIdentityId: uamiModule.outputs.id
+
+    useCMK: useCMK
+    encryptionKeyUri: useCMK ? kvEncryptionKeys.rsv.keyUri : ''
+
+    environment: environment
+    namingConvention: namingConvention
+    sequenceFormatted: sequenceFormatted
+    namingStructure: namingStructureNoSub
     workloadName: workloadName
+
+    debugMode: debugMode
+    deploymentNameStructure: deploymentNameStructure
+    roles: rolesModule.outputs.roles
+    keyVaultResourceGroupName: keyVaultModule.outputs.resourceGroupName
+    keyVaultName: keyVaultModule.outputs.keyVaultName
   }
 }
 
@@ -618,6 +623,7 @@ module recoveryServicesVaultModule '../shared-modules/recovery/recoveryServicesV
  * HUB REFERENCES
  */
 
+// TODO: Split once into var and re-use var
 var hubDnsZoneSubscriptionId = split(hubPrivateDnsZonesResourceGroupId, '/')[2]
 var hubDnsZoneResourceGroupName = split(hubPrivateDnsZonesResourceGroupId, '/')[4]
 var hubDnsZoneResourceGroup = resourceGroup(hubDnsZoneSubscriptionId, hubDnsZoneResourceGroupName)
@@ -631,3 +637,4 @@ output recoveryServicesVaultId string = recoveryServicesVaultModule.outputs.id
 output backupPolicyName string = recoveryServicesVaultModule.outputs.backupPolicyName
 output diskEncryptionSetId string = diskEncryptionSetModule.outputs.id
 output computeSubnetId string = networkModule.outputs.createdSubnets.computeSubnet.id
+output computeResourceGroupName string = computeRg.name
