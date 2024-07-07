@@ -1,5 +1,5 @@
 /*
- * Azure Firewall Rule Collection for Active Directory
+ * Azure Firewall Rule Collection for the management subnet
  */
 [
   {
