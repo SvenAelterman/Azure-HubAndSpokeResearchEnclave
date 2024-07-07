@@ -23,6 +23,8 @@ param imageReference = {
   // -- OR --
   id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-vnet/providers/Microsoft.Compute/galleries/gal/images/sample/versions/1.0.0'
 }
+param osType = 'Windows'
+
 param logonType = 'entraID'
 param intuneEnrollment = false
 param backupPolicyName = ''

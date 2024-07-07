@@ -116,6 +116,12 @@ param existingPrivateDnsZonesResourceGroupId string = ''
 @description('The IP address of the main hub\'s network virtual appliance (NVA).')
 param mainHubNvaIp string = ''
 
+@description('The pool of IP address space for the entire research environment, including this hub and all its spokes.')
+param ipAddressPool array
+
+@description('The IP addresses of the domain controllers in the Active Directory domain. Required if using AD join.')
+param domainControllerIPAddresses array = []
+
 /*
  * Entra ID object IDs for role assignments
  */
@@ -165,7 +171,7 @@ var resourceNamingStructure = replace(
 )
 var resourceNamingStructureNoSub = replace(resourceNamingStructure, '-{subWorkloadName}', '')
 var rgNamingStructure = replace(resourceNamingStructure, '{rtype}', 'rg')
-var deploymentNameStructure = '${workloadName}-{rtype}-${deploymentTime}'
+var deploymentNameStructure = '${workloadName}-${sequenceFormatted}-{rtype}-${deploymentTime}'
 
 var dateCreatedTag = addAutoDateCreatedTag
   ? {
@@ -252,6 +258,12 @@ module networkModule 'hub-modules/networking/main.bicep' = {
     firewallForcedTunnelNvaIP: mainHubNvaIp
 
     deployManagementSubnet: logonType == 'ad'
+
+    includeActiveDirectoryFirewallRules: logonType == 'ad'
+    domainControllerIPAddresses: domainControllerIPAddresses
+
+    includeDnsFirewallRules: length(customDnsIPs) > 0
+    ipAddressPool: ipAddressPool
   }
 }
 
@@ -286,7 +298,7 @@ module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
   params: {
     location: location
     deploymentNameStructure: deploymentNameStructure
-    keyVaultName: keyVaultNameModule.outputs.shortName
+    keyVaultName: keyVaultNameModule.outputs.validName
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'kv')
     tags: actualTags
     useCMK: useCMK
@@ -496,7 +508,9 @@ module managementVmModule './hub-modules/management-vm/main.bicep' = if (logonTy
     vmLocalAdminUsername: sessionHostLocalAdminUsername
     vmLocalAdminPassword: sessionHostLocalAdminPassword
 
-    vmNamePrefix: 'mgmt-${take(workloadName,9)}${take(string(sequence),1)}'
+    // LATER: Adjust number of characters taken from the workloadName based on the length of the string value of the sequence number
+    // LATER: Allow customization of the prefix mgmt-
+    vmNamePrefix: 'mgmt-${take(workloadName,8)}${take(string(sequence),2)}'
 
     domainJoinInfo: logonType == 'ad'
       ? {
@@ -521,7 +535,7 @@ output hubPrivateDnsZonesResourceGroupId string = empty(existingPrivateDnsZonesR
   ? networkRg.id
   : existingPrivateDnsZonesResourceGroupId
 
-//output managementVmUamiId string = managementVmModule.outputs.uamiId
+output managementVmId string = managementVmModule.outputs.vmId
 output managementVmUamiPrincipalId string = managementVmModule.outputs.uamiPrincipalId
 output managementVmUamiClientId string = managementVmModule.outputs.uamiClientId
 

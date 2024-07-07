@@ -1,0 +1,26 @@
+/*
+ * Azure Firewall Rule Collection for the management subnet
+ */
+[
+  {
+    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+    "action": {
+      "type": "Allow"
+    },
+    "rules": [
+      {
+        "ruleType": "NetworkRule",
+        "name": "HTTP",
+        "ipProtocols": ["TCP"],
+        "sourceAddresses": ["{{managementSubnetRange}}"],
+        "destinationAddresses": ["*"],
+        "destinationPorts": [
+          "80", // HTTP
+          "443" // HTTPS
+        ]
+      }
+    ],
+    "name": "InternetAccess",
+    "priority": 150
+  }
+]

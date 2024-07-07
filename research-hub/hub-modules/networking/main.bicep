@@ -33,6 +33,11 @@ param firewallForcedTunnelNvaIP string = ''
 ])
 param firewallTier string = 'Basic'
 
+param includeActiveDirectoryFirewallRules bool = false
+param includeDnsFirewallRules bool = false
+param ipAddressPool array = []
+param domainControllerIPAddresses array = []
+
 param location string
 param tags object
 param deploymentTime string
@@ -126,7 +131,7 @@ var AvdSubnet = deployAvdSubnet
   ? {
       AvdSubnet: {
         serviceEndpoints: []
-        routes: [] // Routes through the firewall will be added later, but we create the route table here
+        routes: [] // Routes through the firewall will be added later, but we create the route table resource here
         securityRules: []
         delegation: ''
         order: 9 // The tenth /27
@@ -139,7 +144,7 @@ var ManagementSubnet = deployManagementSubnet
   ? {
       ManagementSubnet: {
         serviceEndpoints: []
-        routes: [] // Routes through the firewall will be added later, but we create the route table here
+        routes: [] // Routes through the firewall will be added later, but we create the route table resource here
         securityRules: []
         order: 11 // The twelfth /27
         subnetCidr: 27
@@ -213,6 +218,18 @@ module azureFirewallModule './azureFirewall.bicep' = {
     tags: tags
     location: location
     forcedTunneling: firewallForcedTunnel
+
+    includeActiveDirectoryRules: includeActiveDirectoryFirewallRules
+    includeDnsRules: includeDnsFirewallRules
+    ipAddressPool: ipAddressPool
+    dnsServerIPAddresses: customDnsIPs
+    domainControllerIPAddresses: domainControllerIPAddresses
+    includeManagementSubnetRules: deployManagementSubnet
+    managementSubnetRange: deployManagementSubnet
+      ? networkModule.outputs.createdSubnets.ManagementSubnet.addressPrefix
+      : ''
+    // TODO: AVD session host support in hub
+    //includeAvdSubnetRules: deployAvdSubnet
   }
 }
 

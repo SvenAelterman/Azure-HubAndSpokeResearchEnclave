@@ -97,82 +97,43 @@ resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [
 ]
 
 var computerNames = [for i in range(0, vmCount): '${vmNamePrefix}-${i}']
+var vmNames = [for i in range(0, vmCount): replace(namingStructure, '{rtype}', computerNames[i])]
 
-// TODO: Use virtualMachine.bicep shared module
 // Create the session hosts
-resource sessionHosts 'Microsoft.Compute/virtualMachines@2023-03-01' = [
+module sessionHostsModule '../../shared-modules/compute/virtualMachine.bicep' = [
   for i in range(0, vmCount): {
-    name: replace(namingStructure, '{rtype}', computerNames[i])
-    location: location
-    tags: tags
-    properties: {
-      // TODO: Consider adding licenseType: 'Windows_Client' (when using default image)
-      // LATER: Support for hibernation: additionalCapabilities: { hibernationEnabled: }
-      hardwareProfile: {
-        vmSize: vmSize
-      }
-      osProfile: {
-        computerName: computerNames[i]
-        adminUsername: vmLocalAdminUsername
-        adminPassword: vmLocalAdminPassword
-        windowsConfiguration: {
-          // LATER: If leveraging Azure Update Manager, configure for compatibility
-          enableAutomaticUpdates: true
-        }
-      }
-      securityProfile: {
-        encryptionAtHost: true
-        securityType: 'TrustedLaunch'
-        uefiSettings: {
-          secureBootEnabled: true
-          vTpmEnabled: true
-        }
-      }
-      storageProfile: {
-        osDisk: {
-          createOption: 'FromImage'
-          caching: 'ReadWrite'
-          osType: 'Windows'
-          managedDisk: {
-            storageAccountType: 'StandardSSD_LRS'
-            // TODO: Only when using CMK
-            diskEncryptionSet: {
-              id: diskEncryptionSetId
-            }
-          }
-        }
-        imageReference: imageReference
-      }
-      networkProfile: {
-        networkInterfaces: [
-          {
-            id: nics[i].id
-          }
-        ]
-      }
-      diagnosticsProfile: {
-        bootDiagnostics: {
-          enabled: false
-        }
-      }
-      availabilitySet: {
-        id: availabilitySet.id
-      }
+    name: replace(deploymentNameStructure, '{rtype}', 'sh-${computerNames[i]}')
+    params: {
+      location: location
+
+      tags: tags
+      virtualMachineName: vmNames[i]
+
+      vmSize: vmSize
+      diskEncryptionSetId: diskEncryptionSetId
+      nicId: nics[i].id
+      vmLocalAdminUsername: vmLocalAdminUsername
+      vmLocalAdminPassword: vmLocalAdminPassword
+      domainJoinInfo: ADDomainInfo
+      imageReference: imageReference
+      logonType: logonType
+      intuneEnrollment: intuneEnrollment
+      deploymentNameStructure: deploymentNameStructure
+      backupPolicyName: backupPolicyName
+      recoveryServicesVaultId: recoveryServicesVaultId
+      identityType: 'SystemAssigned'
+      vmHostName: computerNames[i]
+      availabilitySetId: availabilitySet.id
+      // An AVD session host is always Windows
+      osType: 'Windows'
     }
-    // Entra ID join requires a system-assigned identity for the VM
-    identity: (logonType == 'entraID')
-      ? {
-          type: 'SystemAssigned'
-        }
-      : null
   }
 ]
 
 // Deploy the AVD agents to each session host
 resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [
   for i in range(0, vmCount): {
-    name: 'AvdAgentDSC'
-    parent: sessionHosts[i]
+    name: '${vmNames[i]}/AvdAgentDSC'
     location: location
     tags: tags
     properties: {
@@ -201,125 +162,8 @@ resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023
     }
     // Wait for domain join to complete before registering as a session host
     dependsOn: [
-      domainJoinExtension[i]
-      entraIDJoinExtension[i]
+      sessionHostsModule[i]
     ]
-  }
-]
-
-// Entra ID join, if specified
-resource entraIDJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [
-  for i in range(0, vmCount): if (logonType == 'entraID') {
-    name: 'EntraIDJoin'
-    parent: sessionHosts[i]
-    location: location
-    tags: tags
-    properties: {
-      publisher: 'Microsoft.Azure.ActiveDirectory'
-      type: 'AADLoginForWindows'
-      typeHandlerVersion: '2.0'
-      autoUpgradeMinorVersion: true
-      settings: intuneEnrollment
-        ? {
-            mdmId: intuneMdmId
-          }
-        : null
-    }
-    dependsOn: [windowsGuestAttestationExtension[i], windowsVMGuestConfigExtension[i]]
-  }
-]
-
-// Domain join the session hosts to Active Directory, if specified
-resource domainJoinExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [
-  for i in range(0, vmCount): if (logonType == 'ad' && !empty(ADDomainInfo)) {
-    name: 'DomainJoin'
-    parent: sessionHosts[i]
-    location: location
-    tags: tags
-    properties: {
-      publisher: 'Microsoft.Compute'
-      type: 'JsonADDomainExtension'
-      typeHandlerVersion: '1.3'
-      autoUpgradeMinorVersion: true
-      settings: {
-        name: ADDomainInfo.adDomainFqdn
-        ouPath: ADDomainInfo.adOuPath
-        user: ADDomainInfo.domainJoinUsername
-        restart: 'true'
-        options: '3'
-      }
-      protectedSettings: {
-        password: ADDomainInfo.domainJoinPassword
-      }
-    }
-    dependsOn: [windowsGuestAttestationExtension[i], windowsVMGuestConfigExtension[i]]
-  }
-]
-
-// Deploy Windows Attestation, for boot integrity monitoring
-resource windowsGuestAttestationExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [
-  for i in range(0, vmCount): {
-    name: 'WindowsGuestAttestation'
-    parent: sessionHosts[i]
-    location: location
-    tags: tags
-    properties: {
-      publisher: 'Microsoft.Azure.Security.WindowsAttestation'
-      type: 'GuestAttestation'
-      typeHandlerVersion: '1.0'
-      autoUpgradeMinorVersion: true
-      enableAutomaticUpgrade: true
-      settings: {
-        AttestationConfig: {
-          MaaSettings: {
-            maaEndpoint: ''
-            maaTenantName: 'GuestAttestation'
-          }
-          AscSettings: {
-            ascReportingEndpoint: ''
-            ascReportingFrequency: ''
-          }
-          useCustomToken: false
-          disableAlerts: false
-        }
-      }
-    }
-  }
-]
-
-// Deploy the Windows VM Guest Configuration extension which is required for most regulatory compliance initiatives
-resource windowsVMGuestConfigExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [
-  for i in range(0, vmCount): {
-    name: 'AzurePolicyforWindows'
-    parent: sessionHosts[i]
-    location: location
-    properties: {
-      publisher: 'Microsoft.GuestConfiguration'
-      type: 'ConfigurationforWindows'
-      typeHandlerVersion: '1.0'
-      autoUpgradeMinorVersion: true
-      enableAutomaticUpgrade: true
-      settings: {}
-      protectedSettings: {}
-    }
-  }
-]
-
-// LATER: Deploy NVIDIA or AMD drivers if needed, based on vmSize
-
-var rsvRgName = !empty(recoveryServicesVaultId) ? split(recoveryServicesVaultId, '/')[4] : ''
-
-// Create a backup item for each session host
-// This must be deployed in a separate module because it's in a different resource group
-module backupItems '../recovery/rsvProtectedItem.bicep' = [
-  for i in range(0, vmCount): if (!empty(backupPolicyName) && !empty(recoveryServicesVaultId)) {
-    name: replace(deploymentNameStructure, '{rtype}', '${computerNames[i]}-backup')
-    scope: resourceGroup(rsvRgName)
-    params: {
-      backupPolicyName: backupPolicyName
-      recoveryServicesVaultId: recoveryServicesVaultId
-      virtualMachineId: sessionHosts[i].id
-    }
   }
 ]
 

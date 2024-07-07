@@ -44,14 +44,7 @@ param recoveryServicesVaultId string = ''
 param deploymentTime string = utcNow()
 
 import { activeDirectoryDomainInfo } from '../../../shared-modules/types/activeDirectoryDomainInfo.bicep'
-
-type imageReferenceType = {
-  publisher: string?
-  offer: string?
-  version: string?
-  sku: string?
-  id: string?
-}
+import { imageReferenceType } from '../../../shared-modules/types/imageReferenceType.bicep'
 
 var deploymentNameStructure = 'managementvm-{rtype}-${deploymentTime}'
 
@@ -98,7 +91,7 @@ module virtualMachineModule '../../../shared-modules/compute/virtualMachine.bice
   params: {
     virtualMachineName: replace(namingStructure, '{rtype}', vmNamePrefix)
     location: location
-    vmComputerNamePrefix: vmNamePrefix
+    vmHostName: vmNamePrefix
     vmSize: vmSize
     vmLocalAdminUsername: vmLocalAdminUsername
     vmLocalAdminPassword: vmLocalAdminPassword
@@ -119,6 +112,7 @@ module virtualMachineModule '../../../shared-modules/compute/virtualMachine.bice
   }
 }
 
+output vmId string = virtualMachineModule.outputs.id
 output uamiId string = uamiModule.outputs.id
 output uamiPrincipalId string = uamiModule.outputs.principalId
 output uamiClientId string = uamiModule.outputs.clientId

@@ -121,7 +121,7 @@ module storageAccountModule 'storageAccount.bicep' = {
     tags: tags
     encryptionKeyName: storageAccountEncryptionKeyName
     keyVaultUri: keyVault.properties.vaultUri
-    storageAccountName: storageAccountNameModule.outputs.shortName
+    storageAccountName: storageAccountNameModule.outputs.validName
     uamiId: uamiId
     privateEndpointInfo: storageAccountPrivateEndpointInfo
 
