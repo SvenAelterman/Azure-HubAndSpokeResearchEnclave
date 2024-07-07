@@ -1,13 +1,30 @@
 param namingConvention string
+param environment string
+param sequenceFormatted string
+param namingStructure string
+param deploymentNameStructure string
 param workloadName string
-param userAssignedIdentityId string
 param encryptionKeyUri string
+param useCMK bool
+param roles object
+param keyVaultResourceGroupName string
+param keyVaultName string
+
+param debugMode bool = false
 
 param location string = resourceGroup().location
 param tags object
+param storageType string = 'GeoRedundant'
+
+var vaultName = replace(namingStructure, '{rtype}', 'rsv')
+
+resource keyVaultResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
+  name: keyVaultResourceGroupName
+  scope: subscription()
+}
 
 resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2023-06-01' = {
-  name: replace(namingConvention, '{rtype}', 'rsv')
+  name: vaultName
   location: location
   tags: tags
   sku: {
@@ -16,32 +33,29 @@ resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2023-06-01' = 
   }
 
   identity: {
-    type: 'UserAssigned'
-    userAssignedIdentities: {
-      '${userAssignedIdentityId}': {}
-    }
+    type: 'SystemAssigned'
   }
 
   properties: {
+    // Use only Azure Monitor for alerts
     monitoringSettings: {
-      // Use only Azure Monitor for alerts
       azureMonitorAlertSettings: {
         alertsForAllJobFailures: 'Enabled'
+        // Only supported in later API versions
+        // alertsForAllFailoverIssues: 'Enabled'
+        // alertsForAllReplicationIssues: 'Enabled'
       }
       classicAlertSettings: {
         alertsForCriticalOperations: 'Disabled'
+        // Only supported in later API versions
+        // emailNotificationsForSiteRecovery: 'Disabled'
       }
     }
 
     securitySettings: {
       // Default to immutable but don't lock the policy
       immutabilitySettings: {
-        state: 'Unlocked'
-      }
-      // Enforce 14 day soft delete
-      softDeleteSettings: {
-        softDeleteRetentionPeriodInDays: 14
-        softDeleteState: 'AlwaysON'
+        state: debugMode ? 'Disabled' : 'Unlocked'
       }
     }
 
@@ -54,17 +68,30 @@ resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2023-06-01' = 
 
     publicNetworkAccess: 'Enabled'
 
-    // Use a customer-managed key for compliance with NIST 800-171 R2 policy
-    encryption: {
-      keyVaultProperties: {
-        keyUri: encryptionKeyUri
-      }
-      kekIdentity: {
-        useSystemAssignedIdentity: false
-        userAssignedIdentity: userAssignedIdentityId
-      }
-      infrastructureEncryption: 'Enabled'
-    }
+    // Use a customer-managed key when not debugging and when specified
+    encryption: !debugMode && useCMK
+      ? {
+          keyVaultProperties: {
+            keyUri: encryptionKeyUri
+          }
+          kekIdentity: {
+            useSystemAssignedIdentity: true
+          }
+          infrastructureEncryption: 'Enabled'
+        }
+      : null
+  }
+}
+
+// Create a role assignment on the Key Vault for the system-assigned managed identity of the vault
+module keyVaultRoleAssignment '../../module-library/roleAssignments/roleAssignment-kv.bicep' = if (useCMK) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'rsv-kv-rbac'), 80)
+  scope: keyVaultResourceGroup
+  params: {
+    kvName: keyVaultName
+    principalId: recoveryServicesVault.identity.principalId
+    roleDefinitionId: roles.KeyVaultCryptoUser
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -73,23 +100,58 @@ resource backupStorageConfig 'Microsoft.RecoveryServices/vaults/backupstoragecon
   name: 'vaultstorageconfig'
   parent: recoveryServicesVault
   properties: {
-    storageType: 'GeoRedundant'
+    storageModelType: storageType
+    storageType: storageType
     crossRegionRestoreFlag: true
+  }
+}
+
+// Enable soft delete settings
+resource backupConfig 'Microsoft.RecoveryServices/vaults/backupconfig@2023-06-01' = {
+  name: 'vaultconfig'
+  location: location
+  parent: recoveryServicesVault
+  properties: {
+    enhancedSecurityState: debugMode ? 'Disabled' : 'Enabled'
+    isSoftDeleteFeatureStateEditable: true
+    softDeleteFeatureState: debugMode ? 'Disabled' : 'Enabled'
+    storageModelType: backupStorageConfig.properties.storageModelType
+    storageType: backupStorageConfig.properties.storageType
   }
 }
 
 // Create a new enhanced policy to use custom schedule
 var backupTime = '2023-12-31T08:00:00.000Z'
 
+// Break up the naming convention on the sequence placeholder to use for the backup RG name
+var processNamingConventionPlaceholders = replace(
+  replace(
+    replace(
+      replace(replace(namingConvention, '{workloadName}', workloadName), '{rtype}', 'rg-backup'),
+      '{loc}',
+      location
+    ),
+    '{env}',
+    environment
+  ),
+  '-{subWorkloadName}',
+  ''
+)
+var splitNamingConvention = split(processNamingConventionPlaceholders, '{seq}')
+var azureBackupRGNamePrefix = '${splitNamingConvention[0]}${sequenceFormatted}-'
+var azureBackupRGNameSuffix = length(splitNamingConvention) > 1 ? splitNamingConvention[1] : ''
+
+// LATER: Parameterize backup policy values
 resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@2023-06-01' = {
-  name: 'EnhancedPolicy-${workloadName}'
+  name: 'EnhancedPolicy-${workloadName}-${sequenceFormatted}'
   parent: recoveryServicesVault
   properties: {
     backupManagementType: 'AzureIaasVM'
 
     instantRPDetails: {
-      // TODO: Follow naming convention
-      azureBackupRGNamePrefix: 'rg-backup-${location}-${workloadName}-'
+      // Following the naming convention of the other resource groups
+      azureBackupRGNamePrefix: azureBackupRGNamePrefix
+      azureBackupRGNameSuffix: azureBackupRGNameSuffix
     }
 
     instantRpRetentionRangeInDays: 2
@@ -152,8 +214,8 @@ resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@
 }
 
 // Lock the Recovery Services Vault to prevent accidental deletion
-resource lock 'Microsoft.Authorization/locks@2020-05-01' = {
-  name: replace(namingConvention, '{rtype}', 'rsv-lock')
+resource lock 'Microsoft.Authorization/locks@2020-05-01' = if (!debugMode) {
+  name: replace(namingStructure, '{rtype}', 'rsv-lock')
   scope: recoveryServicesVault
   properties: {
     level: 'CanNotDelete'
@@ -161,4 +223,8 @@ resource lock 'Microsoft.Authorization/locks@2020-05-01' = {
 }
 
 output id string = recoveryServicesVault.id
+output name string = recoveryServicesVault.name
 output backupPolicyName string = enhancedBackupPolicy.name
+
+// For debug purposes only
+output backupResourceGroupNameStructure string = '${azureBackupRGNamePrefix}{N}${azureBackupRGNameSuffix}'
