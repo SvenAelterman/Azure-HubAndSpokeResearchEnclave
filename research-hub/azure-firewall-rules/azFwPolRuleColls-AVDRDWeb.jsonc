@@ -5,9 +5,13 @@
  * to another AVD host pool.
  * 2023-12-29: This rule is less relevant now because we're no longer allowing access
  * to the AVD infrastructure thanks to using private endpoints.
+ *
+ * NOTE: If needed, these rules MUST NOT be split between AzureCloud and AzureUSGovernment.
  */
 [
   {
+    "name": "Block_AVDWeb_App",
+    "priority": 100,
     "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
     "action": {
       "type": "Deny"
@@ -26,17 +30,13 @@
             "port": 443
           }
         ],
-        "fqdnTags": [],
-        "webCategories": [],
         "targetFqdns": ["client.wvd.microsoft.com", "rdweb.wvd.azure.us"],
-        "targetUrls": [],
         "terminateTLS": false,
         "sourceAddresses": ["*"],
-        "destinationAddresses": [],
-        "sourceIpGroups": []
+        // TODO: Use IP Group
+        "sourceIpGroups": [],
+        "destinationAddresses": []
       }
-    ],
-    "name": "Block_AVDWeb",
-    "priority": 100
+    ]
   }
 ]

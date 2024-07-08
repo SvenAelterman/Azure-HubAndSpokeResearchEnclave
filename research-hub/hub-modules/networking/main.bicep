@@ -35,6 +35,7 @@ param firewallTier string = 'Basic'
 
 param includeActiveDirectoryFirewallRules bool = false
 param includeDnsFirewallRules bool = false
+@description('The entire IP address pool for this research environment, including all (future) spokes. This is usually a supernet/summarized CIDR.')
 param ipAddressPool array = []
 param domainControllerIPAddresses array = []
 
@@ -43,6 +44,8 @@ param tags object
 param deploymentTime string
 param deploymentNameStructure string
 param resourceNamingStructure string
+@description('The resource naming structure to use for IP Group resources. For ease of use when creating firewall rules, it is useful to change the order of the segments. Optiona; defaults to resourceNamingStructure.')
+param ipGroupNamingStructure string = resourceNamingStructure
 
 /*
  * DEFINE THE RESEARCH HUB VIRTUAL NETWORK'S SUBNETS
@@ -204,6 +207,30 @@ module networkModule '../../../shared-modules/networking/main.bicep' = {
   }
 }
 
+// TODO: Use AVM Module
+// https://github.com/Azure/bicep-registry-modules/tree/main/avm/res/network/ip-group
+// Create IP Groups for certain IP ranges
+module poolIPGroupModule '../../../shared-modules/networking/ipGroup.bicep' = {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'ipg-pool'), 64)
+  params: {
+    // TODO: Ensure name is limited to 80 characters
+    name: replace(ipGroupNamingStructure, '{rtype}', 'ipg-Research_IP_Pool')
+    location: location
+    ipAddresses: ipAddressPool
+    tags: tags
+  }
+}
+
+module managementSubnetIPGroupModule '../../../shared-modules/networking/ipGroup.bicep' = if (deployManagementSubnet) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'ipg-mgmt'), 64)
+  params: {
+    name: replace(ipGroupNamingStructure, '{rtype}', 'ipg-Mgmt_Subnet')
+    location: location
+    ipAddresses: [networkModule.outputs.createdSubnets.AzureFirewallManagementSubnet.addressPrefix]
+    tags: tags
+  }
+}
+
 /*
  * Deploy the research hub firewall
  */
@@ -221,13 +248,11 @@ module azureFirewallModule './azureFirewall.bicep' = {
 
     includeActiveDirectoryRules: includeActiveDirectoryFirewallRules
     includeDnsRules: includeDnsFirewallRules
-    ipAddressPool: ipAddressPool
+    ipAddressPoolIPGroupId: poolIPGroupModule.outputs.id
     dnsServerIPAddresses: customDnsIPs
     domainControllerIPAddresses: domainControllerIPAddresses
     includeManagementSubnetRules: deployManagementSubnet
-    managementSubnetRange: deployManagementSubnet
-      ? networkModule.outputs.createdSubnets.ManagementSubnet.addressPrefix
-      : ''
+    managementSubnetIPGroupId: deployManagementSubnet ? managementSubnetIPGroupModule.outputs.id : ''
     // TODO: AVD session host support in hub
     //includeAvdSubnetRules: deployAvdSubnet
   }

@@ -3,6 +3,8 @@
  */
 [
   {
+    "name": "ActiveDirectory_NW",
+    "priority": 150,
     "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
     "action": {
       "type": "Allow"
@@ -12,7 +14,8 @@
         "ruleType": "NetworkRule",
         "name": "DomainControllers",
         "ipProtocols": ["TCP", "UDP", "ICMP"],
-        "sourceAddresses": "{{ipAddressPool}}",
+        "sourceIpGroups": ["{{ipAddressPool}}"],
+        //"sourceAddresses": "{{ipAddressPool}}",
         "destinationAddresses": "{{domainControllerIPAddresses}}",
         "destinationPorts": [
           "88", // Kerberos
@@ -26,8 +29,6 @@
           "49152-65535" // RCP high TCP ports
         ]
       }
-    ],
-    "name": "ActiveDirectory",
-    "priority": 150
+    ]
   }
 ]

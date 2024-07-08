@@ -1,36 +1,72 @@
 /*
  * Azure Firewall Rule Collection for Azure Virtual Desktop
+ // TODO: Split into separate rules for AzureCloud and AzureUSGovernment
  */
-[
-  {
-    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
-    "action": {
-      "type": "Allow"
-    },
-    "rules": [
-      {
-        "ruleType": "ApplicationRule",
-        "name": "DSC_artifacts",
-        "protocols": [
-          {
-            "protocolType": "Http",
-            "port": 80
-          },
-          {
-            "protocolType": "Https",
-            "port": 443
-          }
-        ],
-        "targetFqdns": [
-          // Deployment of AVD session hosts uses content from the AVD PG stored in this storage account
-          "wvdportalstorageblob.blob.core.windows.net",
-          "wvdportalstorageblob.blob.core.usgovcloudapi.net"
-        ],
-        "terminateTLS": false,
-        "sourceAddresses": ["*"]
-      }
-    ],
-    "name": "AVD_Deployment",
-    "priority": 300
-  }
-]
+{
+  "AzureCloud": [
+    {
+      "name": "AVD_Deployment_App",
+      "priority": 300,
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "DSC_artifacts",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "targetFqdns": [
+            // Deployment of AVD session hosts uses content from the AVD PG stored in this storage account
+            "wvdportalstorageblob.blob.core.windows.net"
+          ],
+          "terminateTLS": false,
+          // TODO: Use IP Group
+          "sourceAddresses": ["*"]
+        }
+      ]
+    }
+  ],
+  "AzureUSGovernment": [
+    {
+      "name": "AVD_Deployment_App",
+      "priority": 300,
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "ApplicationRule",
+          "name": "DSC_artifacts",
+          "protocols": [
+            {
+              "protocolType": "Http",
+              "port": 80
+            },
+            {
+              "protocolType": "Https",
+              "port": 443
+            }
+          ],
+          "targetFqdns": [
+            // Deployment of AVD session hosts uses content from the AVD PG stored in this storage account
+            "wvdportalstorageblob.blob.core.usgovcloudapi.net"
+          ],
+          "terminateTLS": false,
+          // TODO: Use IP Group
+          "sourceAddresses": ["*"]
+        }
+      ]
+    }
+  ]
+}

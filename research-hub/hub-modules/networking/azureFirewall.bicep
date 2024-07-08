@@ -21,8 +21,8 @@ param includeDnsRules bool = false
 param includeManagementSubnetRules bool = false
 param dnsServerIPAddresses array = []
 param domainControllerIPAddresses array = []
-param ipAddressPool array = []
-param managementSubnetRange string = ''
+param managementSubnetIPGroupId string = ''
+param ipAddressPoolIPGroupId string
 
 var createManagementIPConfiguration = (firewallTier == 'Basic' || forcedTunneling)
 // Basic Firewall AND not forced tunneling requires two public IP addresses
@@ -52,6 +52,7 @@ resource firewallPolicy 'Microsoft.Network/firewallPolicies@2022-01-01' = {
     sku: {
       tier: firewallTier
     }
+
     // Do not SNAT when in forced tunneling mode
     snat: forcedTunneling
       ? {
@@ -59,19 +60,21 @@ resource firewallPolicy 'Microsoft.Network/firewallPolicies@2022-01-01' = {
           privateRanges: ['0.0.0.0/0']
         }
       : {}
+
+    dnsSettings: firewallTier != 'Basic'
+      ? {
+          enableProxy: true
+          requireProxyForNetworkRules: true
+          servers: dnsServerIPAddresses
+        }
+      : null
   }
+
   tags: tags
 }
 
+// LATER: Organize rule collection groups with most frequently used rule groups first
 var defaultRuleCollectionGroups = {
-  AVD: {
-    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AVD.jsonc')
-    priority: 500
-  }
-  AzurePlatform: {
-    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AzurePlatform.jsonc')[az.environment().name]
-    priority: 1000
-  }
   AVDRDWeb: {
     rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AVDRDWeb.jsonc')
     priority: 100
@@ -80,6 +83,14 @@ var defaultRuleCollectionGroups = {
     rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-ManagedDevices.jsonc')[az.environment().name]
     priority: 300
   }
+  WindowsClient: {
+    rules: loadJsonContent('../../azure-firewall-rules/WindowsClient.jsonc')
+    priority: 400
+  }
+  AVD: {
+    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AVD.jsonc')[az.environment().name]
+    priority: 500
+  }
   Office365Activation: {
     rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-Office365Activation.jsonc')[az.environment().name]
     priority: 700
@@ -87,6 +98,14 @@ var defaultRuleCollectionGroups = {
   ResearchDataSources: {
     rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-ResearchDataSources.jsonc')
     priority: 600
+  }
+  Backup: {
+    rules: loadJsonContent('../../azure-firewall-rules/AzureBackup.jsonc')
+    priority: 800
+  }
+  AzurePlatform: {
+    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AzurePlatform.jsonc')[az.environment().name]
+    priority: 1000
   }
 }
 
@@ -99,11 +118,10 @@ var activeDirectoryRuleCollectionGroup = includeActiveDirectoryRules && length(d
             '"{{domainControllerIPAddresses}}"',
             string(domainControllerIPAddresses)
           ),
-          // TODO: Create IP Group for the pool
-          '"{{ipAddressPool}}"',
-          string(ipAddressPool)
+          '{{ipAddressPool}}',
+          ipAddressPoolIPGroupId
         ))
-        priority: 2100
+        priority: 250
       }
     }
   : {}
@@ -117,25 +135,24 @@ var dnsRuleCollectionGroup = includeDnsRules && length(dnsServerIPAddresses) > 0
             '"{{dnsServerAddresses}}"',
             string(dnsServerIPAddresses)
           ),
-          // TODO: Use IP Group for the pool
-          '"{{ipAddressPool}}"',
-          string(ipAddressPool)
+          '{{ipAddressPool}}',
+          ipAddressPoolIPGroupId
         ))
-        priority: 2000
+        priority: 150
       }
     }
   : {}
 
-var managementSubnetRuleCollectionGroup = includeManagementSubnetRules && length(managementSubnetRange) > 0
+var managementSubnetRuleCollectionGroup = includeManagementSubnetRules && length(managementSubnetIPGroupId) > 0
   ? {
       ManagementSubnet: {
         rules: json(replace(
           loadTextContent('../../azure-firewall-rules/azFwPolRuleColls-ManagementSubnet.jsonc'),
           // TODO: Create IP Group for the management subnet
           '{{managementSubnetRange}}',
-          managementSubnetRange
+          managementSubnetIPGroupId
         ))
-        priority: 5000
+        priority: 350
       }
     }
   : {}

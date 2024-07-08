@@ -1,6 +1,8 @@
 {
   "AzureCloud": [
     {
+      "name": "AzurePortal_App",
+      "priority": 1000,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -79,11 +81,11 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "AzurePortal",
-      "priority": 1000
+      ]
     },
     {
+      "name": "Monitor_App",
+      "priority": 500,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -115,13 +117,38 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "Monitor",
-      "priority": 500
+      ]
+    },
+    {
+      "name": "AzureKMS_NW",
+      "priority": 1500,
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "NetworkRule",
+          "name": "AzureKMS_DnsName",
+          "ipProtocols": ["TCP"],
+          "sourceAddresses": ["*"],
+          // LATER: Use IP Group for entire research range
+          "sourceIpGroups": [],
+          "destinationIpGroups": [],
+          "destinationAddresses": ["40.83.235.53", "20.118.99.224"],
+          // "destinationFqdns": [
+          //   "azkms.core.windows.net",
+          //   "kms.core.windows.net"
+          // ],
+          "destinationPorts": ["1688"]
+        }
+      ]
     }
   ],
   "AzureUSGovernment": [
     {
+      "name": "AzurePortal_App",
+      "priority": 1000,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -129,7 +156,7 @@
       "rules": [
         {
           "ruleType": "ApplicationRule",
-          "name": "Azure_Portal",
+          "name": "AzurePortal_App",
           "protocols": [
             {
               "protocolType": "Http",
@@ -200,11 +227,11 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "AzurePortal",
-      "priority": 1000
+      ]
     },
     {
+      "name": "Monitor_App",
+      "priority": 500,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -232,9 +259,32 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "Monitor",
-      "priority": 500
+      ]
+    },
+    {
+      "name": "AzureKMS_NW",
+      "priority": 1500,
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "NetworkRule",
+          "name": "AzureKMS_DnsName",
+          "ipProtocols": ["TCP"],
+          "sourceAddresses": ["*"],
+          // LATER: Use IP Group for entire research range
+          "sourceIpGroups": [],
+          "destinationIpGroups": [],
+          // "destinationFqdns": [
+          //   "azkms.core.usgovcloudapi.net",
+          //   "kms.core.usgovcloudapi.net"
+          // ],
+          "destinationAddresses": ["52.126.105.2"],
+          "destinationPorts": ["1688"]
+        }
+      ]
     }
   ]
 }

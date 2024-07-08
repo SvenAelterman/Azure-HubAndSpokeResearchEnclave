@@ -1,6 +1,8 @@
 {
   "AzureCloud": [
     {
+      "name": "OfficeActivation_App",
+      "priority": 100,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -37,11 +39,11 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "OfficeActivation",
-      "priority": 100
+      ]
     },
     {
+      "name": "OfficeCertificates_App",
+      "priority": 200,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -98,14 +100,14 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "OfficeCertificates",
-      "priority": 200
+      ]
     }
   ],
   "AzureUSGovernment": [
     // TODO: These URLs might require revision for AzureUSGovernment
     {
+      "name": "OfficeActivation_App",
+      "priority": 100,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -142,11 +144,11 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "OfficeActivation",
-      "priority": 100
+      ]
     },
     {
+      "name": "OfficeCertificates",
+      "priority": 200,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -203,9 +205,7 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "OfficeCertificates",
-      "priority": 200
+      ]
     }
   ]
 }

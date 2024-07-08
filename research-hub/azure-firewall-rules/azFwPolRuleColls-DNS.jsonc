@@ -3,6 +3,8 @@
  */
 [
   {
+    "name": "Custom_DNS_Servers_NW",
+    "priority": 150,
     "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
     "action": {
       "type": "Allow"
@@ -10,14 +12,12 @@
     "rules": [
       {
         "ruleType": "NetworkRule",
-        "name": "DNS",
+        "name": "DNS_NW",
         "ipProtocols": ["TCP", "UDP"],
-        "sourceAddresses": "{{ipAddressPool}}",
+        "sourceIpGroups": ["{{ipAddressPool}}"],
         "destinationAddresses": "{{dnsServerAddresses}}",
         "destinationPorts": ["53"]
       }
-    ],
-    "name": "DNS",
-    "priority": 150
+    ]
   }
 ]

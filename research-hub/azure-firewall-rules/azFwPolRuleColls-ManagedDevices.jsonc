@@ -1,6 +1,8 @@
 {
   "AzureCloud": [
     {
+      "name": "Intune_NW",
+      "priority": 200,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -17,11 +19,11 @@
           "destinationFqdns": [],
           "destinationPorts": ["*"]
         }
-      ],
-      "name": "Intune_NW",
-      "priority": 200
+      ]
     },
     {
+      "name": "WindowsUpdate_App",
+      "priority": 500,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -49,11 +51,11 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "WindowsUpdate",
-      "priority": 500
+      ]
     },
     {
+      "name": "Intune_App",
+      "priority": 300,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -183,15 +185,15 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "Intune_App",
-      "priority": 300
+      ]
     },
     // TODO: Advanced: Add PowerShell and Win32 Apps URLs, by geography
     // https://learn.microsoft.com/en-us/mem/intune/fundamentals/intune-endpoints?tabs=north-america#network-requirements-for-powershell-scripts-and-win32-apps
     // TODO: Advanced: Health Attestation Service URLs, by geography
     // https://learn.microsoft.com/en-us/mem/intune/fundamentals/intune-endpoints?tabs=north-america#migrating-device-health-attestation-compliance-policies-to-microsoft-azure-attestation
     {
+      "name": "Entra_ID_NW",
+      "priority": 250,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -219,11 +221,11 @@
           "destinationFqdns": [],
           "destinationPorts": ["80", "443"]
         }
-      ],
-      "name": "Entra_ID_NW",
-      "priority": 250
+      ]
     },
     {
+      "name": "Entra_ID_App",
+      "priority": 260,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -348,13 +350,13 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "Entra_ID_App",
-      "priority": 260
+      ]
     }
   ],
   "AzureUSGovernment": [
     {
+      "name": "Intune_NW",
+      "priority": 200,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -371,11 +373,11 @@
           "destinationFqdns": [],
           "destinationPorts": ["*"]
         }
-      ],
-      "name": "Intune_NW",
-      "priority": 200
+      ]
     },
     {
+      "name": "WindowsUpdate_App",
+      "priority": 500,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -403,11 +405,11 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "WindowsUpdate",
-      "priority": 500
+      ]
     },
     {
+      "name": "Intune_App",
+      "priority": 300,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -527,11 +529,11 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "Intune_App",
-      "priority": 300
+      ]
     },
     {
+      "name": "Entra_ID_NW",
+      "priority": 250,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -559,11 +561,11 @@
           "destinationFqdns": [],
           "destinationPorts": ["80", "443"]
         }
-      ],
-      "name": "Entra_ID_NW",
-      "priority": 250
+      ]
     },
     {
+      "name": "Entra_ID_App",
+      "priority": 260,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -687,9 +689,7 @@
           "destinationAddresses": [],
           "sourceIpGroups": []
         }
-      ],
-      "name": "Entra_ID",
-      "priority": 260
+      ]
     }
   ]
 }
