@@ -1,6 +1,5 @@
 /*
  * Azure Firewall Rule Collection for Azure Virtual Desktop
- // TODO: Split into separate rules for AzureCloud and AzureUSGovernment
  */
 {
   "AzureCloud": [
