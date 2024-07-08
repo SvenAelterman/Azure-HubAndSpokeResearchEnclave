@@ -15,7 +15,6 @@
         "name": "HTTP",
         "ipProtocols": ["TCP"],
         "sourceIpGroups": ["{{managementSubnetRange}}"],
-        //"sourceAddresses": ["{{managementSubnetRange}}"],
         "destinationAddresses": ["*"],
         "destinationPorts": [
           "80", // HTTP
