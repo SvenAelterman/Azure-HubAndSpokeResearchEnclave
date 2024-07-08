@@ -15,7 +15,6 @@
         "name": "DomainControllers",
         "ipProtocols": ["TCP", "UDP", "ICMP"],
         "sourceIpGroups": ["{{ipAddressPool}}"],
-        //"sourceAddresses": "{{ipAddressPool}}",
         "destinationAddresses": "{{domainControllerIPAddresses}}",
         "destinationPorts": [
           "88", // Kerberos

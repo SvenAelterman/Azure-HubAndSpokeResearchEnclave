@@ -15,6 +15,7 @@
         "name": "DNS_NW",
         "ipProtocols": ["TCP", "UDP"],
         "sourceIpGroups": ["{{ipAddressPool}}"],
+        // The way the Bicep code replaces this placeholder will turn it into an array type
         "destinationAddresses": "{{dnsServerAddresses}}",
         "destinationPorts": ["53"]
       }
