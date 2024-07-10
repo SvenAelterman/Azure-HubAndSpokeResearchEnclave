@@ -76,11 +76,11 @@ resource firewallPolicy 'Microsoft.Network/firewallPolicies@2022-01-01' = {
 // LATER: Organize rule collection groups with most frequently used rule groups first
 var defaultRuleCollectionGroups = {
   AVDRDWeb: {
-    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AVDRDWeb.jsonc')
+    rules: loadJsonContent('../../azure-firewall-rules/AVDRDWeb.jsonc')
     priority: 100
   }
   ManagedDevices: {
-    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-ManagedDevices.jsonc')[az.environment().name]
+    rules: loadJsonContent('../../azure-firewall-rules/EntraManagedDevices.jsonc')[az.environment().name]
     priority: 300
   }
   WindowsClient: {
@@ -88,15 +88,15 @@ var defaultRuleCollectionGroups = {
     priority: 400
   }
   AVD: {
-    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AVD.jsonc')[az.environment().name]
+    rules: loadJsonContent('../../azure-firewall-rules/AVD.jsonc')[az.environment().name]
     priority: 500
   }
   Office365Activation: {
-    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-Office365Activation.jsonc')[az.environment().name]
+    rules: loadJsonContent('../../azure-firewall-rules/Microsoft365Activation.jsonc')[az.environment().name]
     priority: 700
   }
   ResearchDataSources: {
-    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-ResearchDataSources.jsonc')
+    rules: loadJsonContent('../../azure-firewall-rules/ResearchDataSources.jsonc')
     priority: 600
   }
   Backup: {
@@ -104,7 +104,7 @@ var defaultRuleCollectionGroups = {
     priority: 800
   }
   AzurePlatform: {
-    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-AzurePlatform.jsonc')[az.environment().name]
+    rules: loadJsonContent('../../azure-firewall-rules/AzurePlatform.jsonc')[az.environment().name]
     priority: 1000
   }
 }
@@ -114,7 +114,7 @@ var activeDirectoryRuleCollectionGroup = includeActiveDirectoryRules && length(d
       ActiveDirectory: {
         rules: json(replace(
           replace(
-            loadTextContent('../../azure-firewall-rules/azFwPolRuleColls-ActiveDirectory.jsonc'),
+            loadTextContent('../../azure-firewall-rules/ActiveDirectory.jsonc'),
             '"{{domainControllerIPAddresses}}"',
             string(domainControllerIPAddresses)
           ),
@@ -131,7 +131,7 @@ var dnsRuleCollectionGroup = includeDnsRules && length(dnsServerIPAddresses) > 0
       DNS: {
         rules: json(replace(
           replace(
-            loadTextContent('../../azure-firewall-rules/azFwPolRuleColls-DNS.jsonc'),
+            loadTextContent('../../azure-firewall-rules/CustomDns.jsonc'),
             '"{{dnsServerAddresses}}"',
             string(dnsServerIPAddresses)
           ),
@@ -147,7 +147,7 @@ var managementSubnetRuleCollectionGroup = includeManagementSubnetRules && length
   ? {
       ManagementSubnet: {
         rules: json(replace(
-          loadTextContent('../../azure-firewall-rules/azFwPolRuleColls-ManagementSubnet.jsonc'),
+          loadTextContent('../../azure-firewall-rules/ManagementSubnet.jsonc'),
           // TODO: Create IP Group for the management subnet
           '{{managementSubnetRange}}',
           managementSubnetIPGroupId
