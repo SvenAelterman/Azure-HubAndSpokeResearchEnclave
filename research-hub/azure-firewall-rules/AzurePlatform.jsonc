@@ -33,9 +33,8 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -55,9 +54,8 @@
           "targetFqdns": ["management.azure.com"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -77,9 +75,8 @@
           "targetFqdns": ["service.bmx.azure.com"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -113,9 +110,8 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -131,9 +127,7 @@
           "ruleType": "NetworkRule",
           "name": "AzureKMS_DnsName",
           "ipProtocols": ["TCP"],
-          "sourceAddresses": ["*"],
-          // LATER: Use IP Group for entire research range
-          "sourceIpGroups": [],
+          "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationIpGroups": [],
           "destinationAddresses": ["40.83.235.53", "20.118.99.224"],
           // "destinationFqdns": [
@@ -179,9 +173,8 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -201,9 +194,8 @@
           "targetFqdns": ["management.usgovcloudapi.net"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -223,9 +215,8 @@
           "targetFqdns": ["service.bmx.azure.com"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -255,9 +246,8 @@
           "targetFqdns": ["api.loganalytics.us", "portal.loganalytics.us"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -273,9 +263,7 @@
           "ruleType": "NetworkRule",
           "name": "AzureKMS_DnsName",
           "ipProtocols": ["TCP"],
-          "sourceAddresses": ["*"],
-          // LATER: Use IP Group for entire research range
-          "sourceIpGroups": [],
+          "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationIpGroups": [],
           // "destinationFqdns": [
           //   "azkms.core.usgovcloudapi.net",

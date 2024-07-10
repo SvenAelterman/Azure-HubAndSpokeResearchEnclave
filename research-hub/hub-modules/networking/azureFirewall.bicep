@@ -76,23 +76,43 @@ resource firewallPolicy 'Microsoft.Network/firewallPolicies@2022-01-01' = {
 // LATER: Organize rule collection groups with most frequently used rule groups first
 var defaultRuleCollectionGroups = {
   AVDRDWeb: {
-    rules: loadJsonContent('../../azure-firewall-rules/AVDRDWeb.jsonc')
+    rules: json(replace(
+      loadTextContent('../../azure-firewall-rules/AVDRDWeb.jsonc'),
+      '{{ipAddressPool}}',
+      ipAddressPoolIPGroupId
+    ))
     priority: 100
   }
   ManagedDevices: {
-    rules: loadJsonContent('../../azure-firewall-rules/EntraManagedDevices.jsonc')[az.environment().name]
+    rules: json(replace(
+      loadTextContent('../../azure-firewall-rules/EntraManagedDevices.jsonc'),
+      '{{ipAddressPool}}',
+      ipAddressPoolIPGroupId
+    ))[az.environment().name]
     priority: 300
   }
   WindowsClient: {
-    rules: loadJsonContent('../../azure-firewall-rules/WindowsClient.jsonc')
+    rules: json(replace(
+      loadTextContent('../../azure-firewall-rules/WindowsClient.jsonc'),
+      '{{ipAddressPool}}',
+      ipAddressPoolIPGroupId
+    ))
     priority: 400
   }
   AVD: {
-    rules: loadJsonContent('../../azure-firewall-rules/AVD.jsonc')[az.environment().name]
+    rules: json(replace(
+      loadTextContent('../../azure-firewall-rules/AVD.jsonc'),
+      '{{ipAddressPool}}',
+      ipAddressPoolIPGroupId
+    ))[az.environment().name]
     priority: 500
   }
   Office365Activation: {
-    rules: loadJsonContent('../../azure-firewall-rules/Microsoft365Activation.jsonc')[az.environment().name]
+    rules: json(replace(
+      loadTextContent('../../azure-firewall-rules/Microsoft365Activation.jsonc'),
+      '{{ipAddressPool}}',
+      ipAddressPoolIPGroupId
+    ))[az.environment().name]
     priority: 700
   }
   ResearchDataSources: {
@@ -100,11 +120,19 @@ var defaultRuleCollectionGroups = {
     priority: 600
   }
   Backup: {
-    rules: loadJsonContent('../../azure-firewall-rules/AzureBackup.jsonc')
+    rules: json(replace(
+      loadTextContent('../../azure-firewall-rules/AzureBackup.jsonc'),
+      '{{ipAddressPool}}',
+      ipAddressPoolIPGroupId
+    ))
     priority: 800
   }
   AzurePlatform: {
-    rules: loadJsonContent('../../azure-firewall-rules/AzurePlatform.jsonc')[az.environment().name]
+    rules: json(replace(
+      loadTextContent('../../azure-firewall-rules/AzurePlatform.jsonc'),
+      '{{ipAddressPool}}',
+      ipAddressPoolIPGroupId
+    ))[az.environment().name]
     priority: 1000
   }
 }

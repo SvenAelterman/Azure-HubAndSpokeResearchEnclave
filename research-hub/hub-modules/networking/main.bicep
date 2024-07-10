@@ -229,7 +229,11 @@ module managementSubnetIPGroupModule '../../../shared-modules/networking/ipGroup
     ipAddresses: [networkModule.outputs.createdSubnets.AzureFirewallManagementSubnet.addressPrefix]
     tags: tags
   }
+  // Cannot simultaneously deploy multiple IP Groups that are already in use by the same firewall
+  dependsOn: [poolIPGroupModule]
 }
+
+// TODO: Additional IP Groups: Active Directory IPs, DNS IPs, AVD subnet range (if present)
 
 /*
  * Deploy the research hub firewall

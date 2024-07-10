@@ -12,8 +12,7 @@
           "ruleType": "NetworkRule",
           "name": "GuestAndHybridMgt",
           "ipProtocols": ["TCP"],
-          "sourceAddresses": ["*"],
-          "sourceIpGroups": [],
+          "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationAddresses": ["GuestAndHybridManagement"],
           "destinationIpGroups": [],
           "destinationFqdns": [],
@@ -47,9 +46,8 @@
           "targetFqdns": [],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -79,9 +77,8 @@
           "targetFqdns": ["*.manage.microsoft.com", "manage.microsoft.com"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -101,9 +98,8 @@
           "targetFqdns": ["config.office.com", "*.officeconfig.msocdn.com"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -123,9 +119,8 @@
           "targetFqdns": ["graph.windows.net"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -148,9 +143,8 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -181,9 +175,8 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -203,8 +196,7 @@
           "ruleType": "NetworkRule",
           "name": "Entra_ID_Tag",
           "ipProtocols": ["TCP"],
-          "sourceAddresses": ["*"],
-          "sourceIpGroups": [],
+          "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationAddresses": ["AzureActiveDirectory"],
           "destinationIpGroups": [],
           "destinationFqdns": [],
@@ -214,8 +206,7 @@
           "ruleType": "NetworkRule",
           "name": "Entra_ID_metadata",
           "ipProtocols": ["TCP"],
-          "sourceAddresses": ["*"],
-          "sourceIpGroups": [],
+          "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationAddresses": ["169.254.169.254"],
           "destinationIpGroups": [],
           "destinationFqdns": [],
@@ -249,9 +240,8 @@
           "targetFqdns": ["graph.windows.net"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -271,9 +261,8 @@
           "targetFqdns": ["manage.azure.com"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
           "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -298,9 +287,7 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -324,9 +311,7 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -346,9 +331,7 @@
           "targetFqdns": ["pas.windows.net"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     }
@@ -366,8 +349,7 @@
           "ruleType": "NetworkRule",
           "name": "GuestAndHybridMgt",
           "ipProtocols": ["TCP"],
-          "sourceAddresses": ["*"],
-          "sourceIpGroups": [],
+          "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationAddresses": ["GuestAndHybridManagement"],
           "destinationIpGroups": [],
           "destinationFqdns": [],
@@ -401,9 +383,7 @@
           "targetFqdns": [],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -433,9 +413,7 @@
           "targetFqdns": ["*.manage.microsoft.us", "manage.microsoft.us"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -455,9 +433,7 @@
           "targetFqdns": ["config.office.com", "*.officeconfig.msocdn.com"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -477,9 +453,7 @@
           "targetFqdns": ["graph.windows.us"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -499,9 +473,7 @@
           "targetFqdns": ["enterpriseregistration.microsoftonline.us"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -525,9 +497,7 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -543,8 +513,7 @@
           "ruleType": "NetworkRule",
           "name": "EntraID_Tag",
           "ipProtocols": ["TCP"],
-          "sourceAddresses": ["*"],
-          "sourceIpGroups": [],
+          "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationAddresses": ["AzureActiveDirectory"],
           "destinationIpGroups": [],
           "destinationFqdns": [],
@@ -554,8 +523,7 @@
           "ruleType": "NetworkRule",
           "name": "Entra_ID_metadata",
           "ipProtocols": ["TCP"],
-          "sourceAddresses": ["*"],
-          "sourceIpGroups": [],
+          "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationAddresses": ["169.254.169.254"],
           "destinationIpGroups": [],
           "destinationFqdns": [],
@@ -593,9 +561,7 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -615,9 +581,7 @@
           "targetFqdns": ["manage.azure.com"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -641,9 +605,7 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -663,9 +625,7 @@
           "targetFqdns": ["login.microsoftonline.us", "autologon.microsoft.us"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
@@ -685,9 +645,7 @@
           "targetFqdns": ["pas.windows.net"],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     }

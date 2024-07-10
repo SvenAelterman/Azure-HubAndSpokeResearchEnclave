@@ -35,9 +35,7 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -96,9 +94,7 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     }
@@ -140,9 +136,7 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     },
@@ -201,9 +195,7 @@
           ],
           "targetUrls": [],
           "terminateTLS": false,
-          "sourceAddresses": ["*"],
-          "destinationAddresses": [],
-          "sourceIpGroups": []
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     }

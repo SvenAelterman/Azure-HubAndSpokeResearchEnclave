@@ -1,7 +1,7 @@
 [
   {
     "name": "AzureBackup_App",
-    "priority": 200,
+    "priority": 300,
     "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
     "action": {
       "type": "Allow"
@@ -22,14 +22,13 @@
         ],
         "fqdnTags": ["AzureBackup"],
         "terminateTLS": false,
-        // TODO: Use IP Group
-        "sourceAddresses": ["*"]
+        "sourceIpGroups": ["{{ipAddressPool}}"]
       }
     ]
   },
   {
     "name": "AzureBackup_NW",
-    "priority": 300,
+    "priority": 200,
     "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
     "action": {
       "type": "Allow"
@@ -39,9 +38,7 @@
         "ruleType": "NetworkRule",
         "name": "AzureBackup",
         "ipProtocols": ["TCP"],
-        // TODO: Use IP Group
-        "sourceAddresses": ["*"],
-        "sourceIpGroups": [],
+        "sourceIpGroups": ["{{ipAddressPool}}"],
         "destinationAddresses": ["AzureBackup"],
         "destinationPorts": ["*"]
       }

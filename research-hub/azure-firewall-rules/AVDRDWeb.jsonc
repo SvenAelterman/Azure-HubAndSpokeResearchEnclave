@@ -32,9 +32,7 @@
         ],
         "targetFqdns": ["client.wvd.microsoft.com", "rdweb.wvd.azure.us"],
         "terminateTLS": false,
-        "sourceAddresses": ["*"],
-        // TODO: Use IP Group
-        "sourceIpGroups": [],
+        "sourceIpGroups": ["{{ipAddressPool}}"],
         "destinationAddresses": []
       }
     ]

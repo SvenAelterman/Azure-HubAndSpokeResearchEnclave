@@ -20,9 +20,7 @@
         "ruleType": "NetworkRule",
         "name": "PublicNTP",
         "ipProtocols": ["UDP"],
-        // TODO: Use IP Group
-        "sourceAddresses": ["*"],
-        "sourceIpGroups": [],
+        "sourceIpGroups": ["{{ipAddressPool}}"],
         // Can't use this because we'd loose support for Basic tier Firewall
         //"destinationFqdns": ["time.windows.com"],
         "destinationAddresses": ["40.119.6.228"],

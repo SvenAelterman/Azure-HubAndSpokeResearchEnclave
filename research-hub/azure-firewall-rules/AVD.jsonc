@@ -29,8 +29,7 @@
             "wvdportalstorageblob.blob.core.windows.net"
           ],
           "terminateTLS": false,
-          // TODO: Use IP Group
-          "sourceAddresses": ["*"]
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     }
@@ -62,8 +61,7 @@
             "wvdportalstorageblob.blob.core.usgovcloudapi.net"
           ],
           "terminateTLS": false,
-          // TODO: Use IP Group
-          "sourceAddresses": ["*"]
+          "sourceIpGroups": ["{{ipAddressPool}}"]
         }
       ]
     }
