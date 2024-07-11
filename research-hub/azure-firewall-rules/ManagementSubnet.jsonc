@@ -3,6 +3,8 @@
  */
 [
   {
+    "name": "InternetAccess_NW",
+    "priority": 150,
     "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
     "action": {
       "type": "Allow"
@@ -12,15 +14,13 @@
         "ruleType": "NetworkRule",
         "name": "HTTP",
         "ipProtocols": ["TCP"],
-        "sourceAddresses": ["{{managementSubnetRange}}"],
+        "sourceIpGroups": ["{{managementSubnetRange}}"],
         "destinationAddresses": ["*"],
         "destinationPorts": [
           "80", // HTTP
           "443" // HTTPS
         ]
       }
-    ],
-    "name": "InternetAccess",
-    "priority": 150
+    ]
   }
 ]

@@ -1,11 +1,20 @@
 [
-	{
-		"ruleCollectionType": "FirewallPolicyFilterRuleCollection",
-		"action": {
-			"type": "Allow"
-		},
-		"rules": [],
-		"name": "ResearchDataSources_AllProjects",
-		"priority": 100
-	}
+  {
+    "name": "ResearchDataSources_AllProjects_App",
+    "priority": 100,
+    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+    "action": {
+      "type": "Allow"
+    },
+    "rules": []
+  },
+  {
+    "name": "ResearchDataSources_AllProjects_NW",
+    "priority": 500,
+    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+    "action": {
+      "type": "Allow"
+    },
+    "rules": []
+  }
 ]

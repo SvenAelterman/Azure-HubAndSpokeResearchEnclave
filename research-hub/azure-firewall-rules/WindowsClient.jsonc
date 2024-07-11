@@ -1,0 +1,31 @@
+[
+  {
+    "name": "WindowsClient_App",
+    "priority": 200,
+    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+    "action": {
+      "type": "Allow"
+    },
+    "rules": []
+  },
+  {
+    "name": "WindowsClient_NW",
+    "priority": 300,
+    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+    "action": {
+      "type": "Allow"
+    },
+    "rules": [
+      {
+        "ruleType": "NetworkRule",
+        "name": "PublicNTP",
+        "ipProtocols": ["UDP"],
+        "sourceIpGroups": ["{{ipAddressPool}}"],
+        // Can't use this because we'd loose support for Basic tier Firewall
+        //"destinationFqdns": ["time.windows.com"],
+        "destinationAddresses": ["40.119.6.228"],
+        "destinationPorts": ["123"]
+      }
+    ]
+  }
+]

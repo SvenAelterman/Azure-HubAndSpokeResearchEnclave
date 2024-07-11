@@ -160,6 +160,7 @@ import { remoteAppApplicationGroup } from '../shared-modules/virtualDesktop/avd.
 //------------------------------- START VARIABLES ------------------------------
 
 var sequenceFormatted = format('{0:00}', sequence)
+var ipGroupNamingStructure = '${workloadName}-${sequenceFormatted}-{rtype}-${location}'
 var resourceNamingStructure = replace(
   replace(
     replace(replace(namingConvention, '{workloadName}', workloadName), '{env}', environment),
@@ -264,6 +265,7 @@ module networkModule 'hub-modules/networking/main.bicep' = {
 
     includeDnsFirewallRules: length(customDnsIPs) > 0
     ipAddressPool: ipAddressPool
+    ipGroupNamingStructure: ipGroupNamingStructure
   }
 }
 

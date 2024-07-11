@@ -1,0 +1,47 @@
+[
+  {
+    "name": "AzureBackup_App",
+    "priority": 300,
+    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+    "action": {
+      "type": "Allow"
+    },
+    "rules": [
+      {
+        "ruleType": "ApplicationRule",
+        "name": "FQDNTag",
+        "protocols": [
+          {
+            "protocolType": "Http",
+            "port": 80
+          },
+          {
+            "protocolType": "Https",
+            "port": 443
+          }
+        ],
+        "fqdnTags": ["AzureBackup"],
+        "terminateTLS": false,
+        "sourceIpGroups": ["{{ipAddressPool}}"]
+      }
+    ]
+  },
+  {
+    "name": "AzureBackup_NW",
+    "priority": 200,
+    "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+    "action": {
+      "type": "Allow"
+    },
+    "rules": [
+      {
+        "ruleType": "NetworkRule",
+        "name": "AzureBackup",
+        "ipProtocols": ["TCP"],
+        "sourceIpGroups": ["{{ipAddressPool}}"],
+        "destinationAddresses": ["AzureBackup"],
+        "destinationPorts": ["*"]
+      }
+    ]
+  }
+]
