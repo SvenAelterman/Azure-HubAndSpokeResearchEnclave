@@ -1,11 +1,12 @@
 # User PowerShell deployment scripts
 *.user.ps1
 
-# Parameter files, except for samples
+# Parameter files, except for samples and tests
 *parameters.json
 *.bicepparam
 
 !main.sample*.bicepparam
+!*.tests.bicepparam
 
 # Compiled Bicep, compiled Bicepparam
 main.json
