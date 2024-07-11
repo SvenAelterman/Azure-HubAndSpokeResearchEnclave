@@ -101,7 +101,7 @@ var defaultRuleCollectionGroups = {
   }
   AVD: {
     rules: json(replace(
-      loadTextContent('../../azure-firewall-rules/azFwPolRuleColls-AVD.jsonc'),
+      loadTextContent('../../azure-firewall-rules/AVD.jsonc'),
       '{{ipAddressPool}}',
       ipAddressPoolIPGroupId
     ))[az.environment().name]
@@ -116,7 +116,7 @@ var defaultRuleCollectionGroups = {
     priority: 700
   }
   ResearchDataSources: {
-    rules: loadJsonContent('../../azure-firewall-rules/azFwPolRuleColls-ResearchDataSources.jsonc')
+    rules: loadJsonContent('../../azure-firewall-rules/ResearchDataSources.jsonc')
     priority: 600
   }
   Backup: {
