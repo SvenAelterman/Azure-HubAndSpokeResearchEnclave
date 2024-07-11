@@ -1,0 +1,28 @@
+#
+# PSRule configuration
+#
+# Documentation for all configuration options:
+# https://aka.ms/ps-rule/options
+
+requires:
+  PSRule: "@pre >=2.9.0"
+  PSRule.Rules.Azure: "@pre >=1.38.0"
+
+include:
+  module:
+    - PSRule.Rules.Azure
+
+output:
+  culture:
+    - en-US
+
+input:
+  pathIgnore:
+    # Only process tests.bicepparam files
+    - "**/*.bicep"
+    - "!**/*.tests.bicepparam"
+
+configuration:
+  AZURE_BICEP_PARAMS_FILE_EXPANSION: true
+  AZURE_BICEP_CHECK_TOOL: true
+  AZURE_BICEP_MINIMUM_VERSION: "0.28.1"
