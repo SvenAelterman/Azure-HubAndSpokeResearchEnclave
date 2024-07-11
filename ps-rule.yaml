@@ -18,11 +18,10 @@ output:
 
 input:
   pathIgnore:
-    # Only process tests.bicepparam files
-    - "**/*.bicep"
+    # Only process *.tests.bicepparam files, in any folder
+    - "**"
     - "!**/*.tests.bicepparam"
 
 configuration:
-  AZURE_BICEP_PARAMS_FILE_EXPANSION: true
   AZURE_BICEP_CHECK_TOOL: true
   AZURE_BICEP_MINIMUM_VERSION: "0.28.1"
