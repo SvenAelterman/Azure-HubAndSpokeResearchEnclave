@@ -16,11 +16,13 @@ param vmLocalAdminUsername = ''
 param vmLocalAdminPassword = ''
 
 param imageReference = {
+  // -- MARKETPLACE IMAGE --
   publisher: 'microsoftwindowsdesktop'
   offer: 'office-365'
   version: 'latest'
   sku: 'win11-23h2-avd-m365'
   // -- OR --
+  // -- CUSTOM IMAGE --
   id: '/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/rg-vnet/providers/Microsoft.Compute/galleries/gal/images/sample/versions/1.0.0'
 }
 param osType = 'Windows'
