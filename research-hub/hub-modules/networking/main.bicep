@@ -226,7 +226,7 @@ module managementSubnetIPGroupModule '../../../shared-modules/networking/ipGroup
   params: {
     name: replace(ipGroupNamingStructure, '{rtype}', 'ipg-Mgmt_Subnet')
     location: location
-    ipAddresses: [networkModule.outputs.createdSubnets.AzureFirewallManagementSubnet.addressPrefix]
+    ipAddresses: [networkModule.outputs.createdSubnets.ManagementSubnet.addressPrefix]
     tags: tags
   }
   // Cannot simultaneously deploy multiple IP Groups that are already in use by the same firewall
