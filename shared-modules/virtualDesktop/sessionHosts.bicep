@@ -100,7 +100,7 @@ var computerNames = [for i in range(0, vmCount): '${vmNamePrefix}-${i}']
 var vmNames = [for i in range(0, vmCount): replace(namingStructure, '{rtype}', computerNames[i])]
 
 // Create the session hosts
-module sessionHostsModule '../../shared-modules/compute/virtualMachine.bicep' = [
+module virtualMachinesModule '../../shared-modules/compute/virtualMachine.bicep' = [
   for i in range(0, vmCount): {
     name: replace(deploymentNameStructure, '{rtype}', 'sh-${computerNames[i]}')
     params: {
@@ -162,7 +162,7 @@ resource avdAgentDscExtension 'Microsoft.Compute/virtualMachines/extensions@2023
     }
     // Wait for domain join to complete before registering as a session host
     dependsOn: [
-      sessionHostsModule[i]
+      virtualMachinesModule[i]
     ]
   }
 ]
