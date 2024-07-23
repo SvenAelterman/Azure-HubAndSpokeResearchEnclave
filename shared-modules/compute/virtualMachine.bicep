@@ -219,6 +219,7 @@ resource windowsGuestAttestationExtension 'Microsoft.Compute/virtualMachines/ext
 }
 
 // Deploy the Windows VM Guest Configuration extension which is required for most regulatory compliance initiatives
+// TODO: Depends on the osType
 resource windowsVMGuestConfigExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = {
   name: 'AzurePolicyforWindows'
   parent: virtualMachine
