@@ -27,7 +27,7 @@ var subnetArmDefs = [
     properties: {
       // All other properties are child properties of the value property
       addressPrefix: subnet.value.addressPrefix
-      serviceEndpoints: contains(subnet.value, 'serviceEndpoints') ? subnet.value.serviceEndpoints : null
+      serviceEndpoints: subnet.?value.?serviceEndpoints ?? null
       // If this subnet needs an NSG and an NSG for the subnet is present in the NSG parameter
       networkSecurityGroup: contains(subnet.value, 'securityRules') && contains(networkSecurityGroups, subnet.key)
         ? {
