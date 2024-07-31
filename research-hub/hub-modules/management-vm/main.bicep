@@ -9,6 +9,7 @@ param vmSize string = 'Standard_B2as_v2'
 
 param diskEncryptionSetId string = ''
 param subnetId string
+param applicationSecurityGroupId string
 
 @secure()
 param vmLocalAdminUsername string
@@ -77,6 +78,13 @@ resource nic 'Microsoft.Network/networkInterfaces@2022-11-01' = {
           subnet: {
             id: subnetId
           }
+          applicationSecurityGroups: !empty(applicationSecurityGroupId)
+            ? [
+                {
+                  id: applicationSecurityGroupId
+                }
+              ]
+            : []
         }
       }
     ]
