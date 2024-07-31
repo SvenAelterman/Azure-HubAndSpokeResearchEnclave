@@ -56,8 +56,10 @@ Set-AzContextWrapper -SubscriptionId $TargetSubscriptionId -Environment $Environ
 # Ensure the EncryptionAtHost feature is registered for the current subscription
 # LATER: Do this with a deployment script in Bicep
 Register-AzProviderFeatureWrapper -ProviderNamespace "Microsoft.Compute" -FeatureName "EncryptionAtHost"
+# LATER: Run provider and feature registrations in parallel
+Register-AzResourceProviderWrapper -ProviderNamespace "Microsoft.Storage"
 
-# Remove the module from the session
+# Remove the module from the session (always, even in WhatIf mode)
 Remove-Module AzSubscriptionManagement -WhatIf:$false
 
 [string]$DeploymentName = "ResearchHub-$(Get-Date -Format 'yyyyMMddThhmmssZ' -AsUTC)"

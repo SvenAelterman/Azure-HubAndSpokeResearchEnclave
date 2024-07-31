@@ -44,8 +44,49 @@ param tags object
 param deploymentTime string
 param deploymentNameStructure string
 param resourceNamingStructure string
-@description('The resource naming structure to use for IP Group resources. For ease of use when creating firewall rules, it is useful to change the order of the segments. Optiona; defaults to resourceNamingStructure.')
+@description('The resource naming structure to use for IP Group resources. For ease of use when creating firewall rules, it is useful to change the order of the segments. Optional; defaults to resourceNamingStructure.')
 param ipGroupNamingStructure string = resourceNamingStructure
+
+module managementApplicationSecurityGroupModule 'br/public:avm/res/network/application-security-group:0.1.4' = if (deployManagementSubnet) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'asg-mgmt'), 64)
+  params: {
+    name: replace(replace(resourceNamingStructure, '{subWorkloadName}', 'network'), '{rtype}', 'asg-mgmt')
+    tags: tags
+  }
+}
+
+module avdApplicationSecurityGroupModule 'br/public:avm/res/network/application-security-group:0.1.4' = if (deployAvdSubnet) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'asg-avd'), 64)
+  params: {
+    name: replace(replace(resourceNamingStructure, '{subWorkloadName}', 'network'), '{rtype}', 'asg-avd')
+    tags: tags
+  }
+}
+
+// Create appropriate security rules for the Management and AVD subnets
+module managementSubnetSecurityRulesModule 'securityRules/managementAndAvdSubnetSecurityRules.bicep' = if (deployManagementSubnet) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'sr-mgmt'), 64)
+  params: {
+    applicationSecurityGroupId: managementApplicationSecurityGroupModule.outputs.resourceId
+    customDnsIPs: customDnsIPs
+    deploySubnet: deployManagementSubnet
+    domainControllerIPAddresses: domainControllerIPAddresses
+    includeActiveDirectoryFirewallRules: includeActiveDirectoryFirewallRules
+    includeDnsFirewallRules: includeDnsFirewallRules
+  }
+}
+
+module avdSubnetSecurityRulesModule 'securityRules/managementAndAvdSubnetSecurityRules.bicep' = if (deployAvdSubnet) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'sr-avd'), 64)
+  params: {
+    applicationSecurityGroupId: avdApplicationSecurityGroupModule.outputs.resourceId
+    customDnsIPs: customDnsIPs
+    deploySubnet: deployAvdSubnet
+    domainControllerIPAddresses: domainControllerIPAddresses
+    includeActiveDirectoryFirewallRules: includeActiveDirectoryFirewallRules
+    includeDnsFirewallRules: includeDnsFirewallRules
+  }
+}
 
 /*
  * DEFINE THE RESEARCH HUB VIRTUAL NETWORK'S SUBNETS
@@ -63,16 +104,14 @@ var requiredSubnets = {
     routes: []
     securityRules: []
     delegation: ''
-    order: 4
-    subnetCidr: 27
+    addressPrefix: cidrSubnet(networkAddressSpace, 27, 4) // The fifth /27
   }
   AzureFirewallSubnet: {
     serviceEndpoints: []
     routes: AzureFirewallSubnetRoutes
     //securityRules: [] Azure Firewall does not support NSGs on its subnets
     delegation: ''
-    order: 0
-    subnetCidr: 26
+    addressPrefix: cidrSubnet(networkAddressSpace, 26, 0) // The first /26
   }
 }
 
@@ -85,8 +124,7 @@ var AzureFirewallManagementSubnet = createManagementIPConfiguration
         routes: loadJsonContent('./routes/AzureFirewallNormal.jsonc')
         //securityRules: [] Azure Firewall does not support NSGs on its subnets
         delegation: ''
-        order: 1
-        subnetCidr: 26
+        addressPrefix: cidrSubnet(networkAddressSpace, 26, 1) // The second /26
       }
     }
   : {}
@@ -99,8 +137,7 @@ var AirlockSubnet = deployAirlockSubnet
         routes: [] // Routes through the firewall will be added later
         securityRules: [] // TODO: Allow RDP only from the AVD and Bastion subnets?
         delegation: ''
-        order: 5 // The fourth /27-sized subnet
-        subnetCidr: 27 // There will never be many airlock review virtual machines taking up addresses
+        addressPrefix: cidrSubnet(networkAddressSpace, 27, 5) // The sixth /27
       }
     }
   : {}
@@ -112,8 +149,7 @@ var AzureBastionSubnet = deployBastion
         //routes: [] Bastion doesn't support routes
         securityRules: loadJsonContent('./securityRules/bastion.jsonc')
         delegation: ''
-        order: 3 // The first /26, in the first /24 block
-        subnetCidr: 26 // Minimum for AzureBastionSubnet
+        addressPrefix: cidrSubnet(networkAddressSpace, 26, 3)
       }
     }
   : {}
@@ -124,8 +160,7 @@ var GatewaySubnet = deployVpn && !useRemoteGateway
         routes: []
         // securityRules: [] GatewaySubnet does not support NSGs
         delegation: ''
-        order: 8 // There will already be a /26 for Bastion if enabled, so this becomes the third /27
-        subnetCidr: 27 // Minimum recommended for GatewaySubnet
+        addressPrefix: cidrSubnet(networkAddressSpace, 27, 8) // The ninth /27
       }
     }
   : {}
@@ -135,10 +170,9 @@ var AvdSubnet = deployAvdSubnet
       AvdSubnet: {
         serviceEndpoints: []
         routes: [] // Routes through the firewall will be added later, but we create the route table resource here
-        securityRules: []
+        securityRules: avdSubnetSecurityRulesModule.outputs.securityRules
         delegation: ''
-        order: 9 // The tenth /27
-        subnetCidr: 27
+        addressPrefix: cidrSubnet(networkAddressSpace, 27, 9) // The tenth /27
       }
     }
   : {}
@@ -148,9 +182,8 @@ var ManagementSubnet = deployManagementSubnet
       ManagementSubnet: {
         serviceEndpoints: []
         routes: [] // Routes through the firewall will be added later, but we create the route table resource here
-        securityRules: []
-        order: 11 // The twelfth /27
-        subnetCidr: 27
+        securityRules: managementSubnetSecurityRulesModule.outputs.securityRules
+        addressPrefix: cidrSubnet(networkAddressSpace, 27, 11) // The twelfth /27
       }
     }
   : {}
@@ -166,25 +199,6 @@ var subnets = union(
   ManagementSubnet
 )
 
-/*
- * Calculate the subnet addresses
- */
-
-var actualSubnets = [
-  for (subnet, i) in items(subnets): {
-    // Add a new property addressPrefix to each subnet definition. If addressPrefix property was already defined, it will be respected.
-    '${subnet.key}': union(
-      {
-        // If the subnet specifies its own CIDR size, use it; otherwise, use the default
-        addressPrefix: cidrSubnet(networkAddressSpace, subnet.value.subnetCidr, subnet.value.order)
-      },
-      subnet.value
-    )
-  }
-]
-
-var actualSubnetObject = reduce(actualSubnets, {}, (cur, next) => union(cur, next))
-
 // Create the route tables, network security groups, and virtual network
 module networkModule '../../../shared-modules/networking/main.bicep' = {
   name: replace(deploymentNameStructure, '{rtype}', 'network')
@@ -192,7 +206,7 @@ module networkModule '../../../shared-modules/networking/main.bicep' = {
     location: location
     deploymentNameStructure: deploymentNameStructure
     namingStructure: resourceNamingStructure
-    subnetDefs: actualSubnetObject
+    subnetDefs: subnets
     vnetAddressPrefixes: [networkAddressSpace]
 
     additionalSubnets: additionalSubnets
@@ -226,7 +240,7 @@ module managementSubnetIPGroupModule '../../../shared-modules/networking/ipGroup
   params: {
     name: replace(ipGroupNamingStructure, '{rtype}', 'ipg-Mgmt_Subnet')
     location: location
-    ipAddresses: [networkModule.outputs.createdSubnets.AzureFirewallManagementSubnet.addressPrefix]
+    ipAddresses: [networkModule.outputs.createdSubnets.ManagementSubnet.addressPrefix]
     tags: tags
   }
   // Cannot simultaneously deploy multiple IP Groups that are already in use by the same firewall
@@ -375,8 +389,12 @@ module allPrivateDnsZonesModule '../dns/allPrivateDnsZones.bicep' =
     }
   }
 
-// TODO: Fix the route tables when the firewall's IP address is known
-
 output createdSubnets object = networkModule.outputs.createdSubnets
 output vNetId string = networkModule.outputs.vNetId
 output fwPrivateIPAddress string = azureFirewallModule.outputs.fwPrIp
+output managementSubnetApplicationSecurityGroupId string = deployManagementSubnet
+  ? managementApplicationSecurityGroupModule.outputs.resourceId
+  : ''
+output avdSubnetApplicationSecurityGroupId string = deployAvdSubnet
+  ? avdApplicationSecurityGroupModule.outputs.resourceId
+  : ''

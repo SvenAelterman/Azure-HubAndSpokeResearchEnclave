@@ -431,7 +431,10 @@ module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHost
     hostPoolToken: avdJumpBoxModule.outputs.hostPoolRegistrationToken
     logonType: logonType
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
+
     subnetId: networkModule.outputs.createdSubnets.AvdSubnet.id
+    applicationSecurityGroupId: networkModule.outputs.avdSubnetApplicationSecurityGroupId
+
     vmCount: jumpBoxSessionHostCount
     vmLocalAdminUsername: sessionHostLocalAdminUsername
     vmLocalAdminPassword: sessionHostLocalAdminPassword
@@ -506,6 +509,7 @@ module managementVmModule './hub-modules/management-vm/main.bicep' = if (logonTy
     tags: actualTags
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'mgmtvm')
     subnetId: networkModule.outputs.createdSubnets.ManagementSubnet.id
+    applicationSecurityGroupId: networkModule.outputs.managementSubnetApplicationSecurityGroupId
 
     vmLocalAdminUsername: sessionHostLocalAdminUsername
     vmLocalAdminPassword: sessionHostLocalAdminPassword

@@ -20,8 +20,9 @@
           "88", // Kerberos
           "123", // NTP
           "135", // RPC
+          "138", // NetBIOS name resolution
           "389", // LDAP
-          "445", // SMB
+          "445", // SMB, SAM/LSA
           "636", // LDAPS
           "3268-3269", // Global Catalog
           "9389", // ADWS
