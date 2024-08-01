@@ -176,6 +176,17 @@ module uamiProjectStorageRoleAssignmentModule '../../../module-library/roleAssig
   }
 }
 
+// Assign UAMI a role to approve the airlock storage account's private endpoint (GitHub issue #95)
+module uamiAirlockStorageRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-st.bicep' = if (!useCentralizedReview) {
+  name: replace(deploymentNameStructure, '{rtype}', 'uami-airlock-role2')
+  params: {
+    principalId: uamiModule.outputs.principalId
+    roleDefinitionId: roles.StorageAccountContributor
+    storageAccountName: spokeAirlockStorageAccountModule.outputs.storageAccountName
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Azure Data Factory resource and contents
 module adfModule 'adf.bicep' = {
   name: replace(deploymentNameStructure, '{rtype}', 'adf')
@@ -409,6 +420,14 @@ var privateEndpointIdsToApprove = join(
   '\',\''
 )
 
+var privateLinkResourceIds = join(
+  [
+    privateManagedPrivateEndpointModule.outputs.privateLinkResourceId
+    airlockManagedPrivateEndpointModule.outputs.privateLinkResourceId
+  ],
+  '\',\''
+)
+
 // Start the triggers in the Data Factory
 module startTriggerDeploymentScriptModule 'deploymentScript.bicep' = {
   name: replace(deploymentNameStructure, '{rtype}', 'dplscr-StartTriggers')
@@ -432,7 +451,7 @@ module approvePrivateEndpointDeploymentScriptModule 'deploymentScript.bicep' = {
     location: location
     subWorkloadName: 'ApprovePep'
     namingStructure: namingStructure
-    arguments: '-PrivateLinkResourceIds @(\'${privateManagedPrivateEndpointModule.outputs.privateLinkResourceId}\', \'${airlockManagedPrivateEndpointModule.outputs.privateLinkResourceId}\') -PrivateEndpointIds @(\'${privateEndpointIdsToApprove}\') -SubscriptionId ${subscription().subscriptionId}'
+    arguments: '-PrivateLinkResourceIds @(\'${privateLinkResourceIds}\') -PrivateEndpointIds @(\'${privateEndpointIdsToApprove}\') -SubscriptionId ${subscription().subscriptionId}'
     scriptContent: loadTextContent('./content/ApproveManagedPrivateEndpoint.ps1')
     userAssignedIdentityId: uamiModule.outputs.id
     tags: tags
