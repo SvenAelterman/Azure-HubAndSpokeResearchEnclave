@@ -638,3 +638,9 @@ output backupPolicyName string = recoveryServicesVaultModule.outputs.backupPolic
 output diskEncryptionSetId string = diskEncryptionSetModule.outputs.id
 output computeSubnetId string = networkModule.outputs.createdSubnets.computeSubnet.id
 output computeResourceGroupName string = computeRg.name
+// Double up the \ in the output so it can be pasted easily into a bicepparam file
+output shortcutTargetPath string = replace(
+  '${storageModule.outputs.storageAccountFileShareBaseUncPath}${fileShareNames.shared}',
+  '\\',
+  '\\\\'
+)

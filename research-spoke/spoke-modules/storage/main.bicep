@@ -167,3 +167,4 @@ module domainJoinModule 'domainJoin.bicep' = if (domainJoin && length(fileShareN
 
 output storageAccountName string = storageAccountModule.outputs.name
 output storageAccountId string = storageAccountModule.outputs.id
+output storageAccountFileShareBaseUncPath string = '\\\\${storageAccountModule.outputs.primaryFileFqdn}\\'
