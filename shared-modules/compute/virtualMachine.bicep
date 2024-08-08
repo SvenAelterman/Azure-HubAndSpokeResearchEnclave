@@ -27,6 +27,7 @@ param domainJoinInfo activeDirectoryDomainInfo = {
 @allowed(['ad', 'entraID'])
 param logonType string
 
+@allowed(['Windows', 'Linux'])
 param osType string = 'Windows'
 param intuneEnrollment bool
 
