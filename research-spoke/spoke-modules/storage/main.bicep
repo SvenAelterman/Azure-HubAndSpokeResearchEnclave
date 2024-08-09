@@ -25,6 +25,9 @@ param fileShareNames array
 @description('An array of valid Blob container names to create.')
 param containerNames array
 
+param createPolicyExemptions bool = false
+param policyAssignmentId string = ''
+
 param debugMode bool = false
 param debugRemoteIp string = ''
 
@@ -139,6 +142,9 @@ module storageAccountModule 'storageAccount.bicep' = {
     filesIdentityType: filesIdentityType
 
     allowSharedKeyAccess: allowSharedKeyAccess
+
+    createPolicyExemptions: createPolicyExemptions
+    policyAssignmentId: policyAssignmentId
   }
 }
 
