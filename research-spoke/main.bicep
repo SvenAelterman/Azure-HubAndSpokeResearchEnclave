@@ -58,6 +58,11 @@ param workspaceFriendlyName string = 'N/A'
 // @description('The Azure resource ID of the standalone image to use for new session hosts. If blank, will use the Windows 11 23H2 O365 Gen 2 Marketplace image.')
 // param sessionHostVmImageResourceId string = ''
 
+@description('If true, will create policy exemptions for resources and policy definitions that are not compliant due to issues with common Azure built-in compliance policy initiatives.')
+param createPolicyExemptions bool = false
+@description('Required if policy exemptions must be created.')
+param policyAssignmentId string = ''
+
 @secure()
 param sessionHostLocalAdminUsername string
 @secure()
@@ -429,6 +434,12 @@ module storageModule './spoke-modules/storage/main.bicep' = {
     uamiPrincipalId: hubManagementVmUamiPrincipalId
     uamiClientId: hubManagementVmUamiClientId
     roles: rolesModule.outputs.roles
+
+    // The private storage uses file shares via ADF, so access keys are used
+    allowSharedKeyAccess: true
+
+    createPolicyExemptions: createPolicyExemptions
+    policyAssignmentId: policyAssignmentId
   }
 }
 

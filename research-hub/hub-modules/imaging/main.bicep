@@ -75,6 +75,8 @@ module aibNetworkModule '../../../shared-modules/networking/main.bicep' = {
       ImageBuilderSubnet: {
         addressPrefix: cidrSubnet(aibNetworkAddressPrefix, 24, 0)
         privateLinkServiceNetworkPolicies: 'Disabled'
+        // For compliance, all subnets need a NSG
+        securityRules: []
       }
     }
 
