@@ -19,6 +19,8 @@ param privateEndpointInfo array
 param fileShareNames array
 @description('An array of valid Blob container names to create.')
 param containerNames array
+@description('Determines if the storage account will allow access using the access keys.')
+param allowSharedKeyAccess bool
 
 // TODO: Update AADDS to EDS (Entra Domain Services)
 @description('The type of identity to use for identity-based authentication for Azure Files. Valid values are: AADDS, AADKERB, and AD.')
@@ -62,7 +64,7 @@ resource storageAccount 'Microsoft.Storage/storageAccounts@2023-01-01' = {
     minimumTlsVersion: 'TLS1_2'
     allowBlobPublicAccess: false
     // Required for ADF access to file shares (no support for managed identity yet)
-    allowSharedKeyAccess: true
+    allowSharedKeyAccess: allowSharedKeyAccess
 
     networkAcls: {
       // TODO: Add resource access rules for export approval Logic App

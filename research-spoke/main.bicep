@@ -429,6 +429,9 @@ module storageModule './spoke-modules/storage/main.bicep' = {
     uamiPrincipalId: hubManagementVmUamiPrincipalId
     uamiClientId: hubManagementVmUamiClientId
     roles: rolesModule.outputs.roles
+
+    // The private storage uses file shares via ADF, so access keys are used
+    allowSharedKeyAccess: true
   }
 }
 
