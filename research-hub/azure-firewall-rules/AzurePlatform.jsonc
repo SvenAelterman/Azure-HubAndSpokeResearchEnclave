@@ -117,7 +117,7 @@
     },
     {
       "name": "AzureKMS_NW",
-      "priority": 1500,
+      "priority": 400,
       "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
       "action": {
         "type": "Allow"
@@ -135,6 +135,25 @@
           //   "kms.core.windows.net"
           // ],
           "destinationPorts": ["1688"]
+        }
+      ]
+    },
+    {
+      "name": "AzureVirtualIP_NW",
+      "priority": 410,
+      "ruleCollectionType": "FirewallPolicyFilterRuleCollection",
+      "action": {
+        "type": "Allow"
+      },
+      "rules": [
+        {
+          "ruleType": "NetworkRule",
+          "name": "AzureVirtualIP",
+          "ipProtocols": ["TCP"],
+          "sourceIpGroups": ["{{ipAddressPool}}"],
+          "destinationIpGroups": [],
+          "destinationAddresses": ["168.63.129.16"],
+          "destinationPorts": ["*"]
         }
       ]
     }
