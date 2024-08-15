@@ -116,14 +116,28 @@ resource integrationRuntime 'Microsoft.DataFactory/factories/integrationRuntimes
 }
 
 // RBAC role assignment for ADF to Key Vault
-module adfKeyVaultRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv-secret.bicep' = {
-  name: take(replace(deploymentNameStructure, '{rtype}', 'rbac-adf-kv-st'), 64)
+// HACK: 2024-08-15: ADF is granted permissions to the entire Key Vault using Key Vault Secrets User role.
+//         This is no longer needed.
+// module adfKeyVaultRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv-secret.bicep' = {
+//   name: take(replace(deploymentNameStructure, '{rtype}', 'rbac-adf-kv-st'), 64)
+//   scope: resourceGroup(keyVaultResourceGroupName)
+//   params: {
+//     principalId: adf.identity.principalId
+//     roleDefinitionId: roles.KeyVaultSecretsUser
+//     kvName: keyVault.name
+//     secretName: privateStorageAccountConnStringSecretName
+//     principalType: 'ServicePrincipal'
+//   }
+// }
+
+// Grant ADF managed identity access to project/spoke Key Vault to retrieve secrets (#12)
+module adfPrjKvRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv.bicep' = {
+  name: replace(deploymentNameStructure, '{rtype}', 'adf-role-prjkv')
   scope: resourceGroup(keyVaultResourceGroupName)
   params: {
+    kvName: keyVault.name
     principalId: adf.identity.principalId
     roleDefinitionId: roles.KeyVaultSecretsUser
-    kvName: keyVault.name
-    secretName: privateStorageAccountConnStringSecretName
     principalType: 'ServicePrincipal'
   }
 }
@@ -133,7 +147,7 @@ resource keyVaultLinkedService 'Microsoft.DataFactory/factories/linkedservices@2
   name: kvLinkedServiceName
   parent: adf
   dependsOn: [
-    adfKeyVaultRoleAssignmentModule
+    adfPrjKvRoleAssignmentModule
   ]
   properties: {
     type: 'AzureKeyVault'
@@ -176,7 +190,7 @@ resource genericLinkedServiceAzFiles 'Microsoft.DataFactory/factories/linkedserv
   parent: adf
   dependsOn: [
     integrationRuntime
-    adfKeyVaultRoleAssignmentModule
+    adfPrjKvRoleAssignmentModule
     keyVaultLinkedService
   ]
   properties: {
