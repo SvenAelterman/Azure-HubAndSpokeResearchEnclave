@@ -125,7 +125,7 @@
       "rules": [
         {
           "ruleType": "NetworkRule",
-          "name": "AzureKMS_DnsName",
+          "name": "AzureKMS_IP",
           "ipProtocols": ["TCP"],
           "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationIpGroups": [],
@@ -261,7 +261,7 @@
       "rules": [
         {
           "ruleType": "NetworkRule",
-          "name": "AzureKMS_DnsName",
+          "name": "AzureKMS_IP",
           "ipProtocols": ["TCP"],
           "sourceIpGroups": ["{{ipAddressPool}}"],
           "destinationIpGroups": [],
