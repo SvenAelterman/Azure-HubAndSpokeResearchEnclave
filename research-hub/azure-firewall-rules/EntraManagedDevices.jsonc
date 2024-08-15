@@ -315,7 +315,7 @@
         },
         {
           "ruleType": "ApplicationRule",
-          "name": "rbac_pas_windows.net",
+          "name": "rbac_flow",
           "protocols": [
             {
               "protocolType": "Http",
@@ -328,6 +328,7 @@
           ],
           "fqdnTags": [],
           "webCategories": [],
+          // https://learn.microsoft.com/entra/identity/devices/howto-vm-sign-in-azure-ad-windows#network-requirements
           "targetFqdns": ["pas.windows.net"],
           "targetUrls": [],
           "terminateTLS": false,
@@ -519,6 +520,8 @@
           "destinationFqdns": [],
           "destinationPorts": ["80", "443"]
         },
+        // TODO: This rule should move to the AzurePlatform rules collection
+        // TODO: This rule shouldn't go through the firewall as it's not a routable IP
         {
           "ruleType": "NetworkRule",
           "name": "Entra_ID_metadata",
@@ -578,7 +581,7 @@
           ],
           "fqdnTags": [],
           "webCategories": [],
-          "targetFqdns": ["manage.azure.com"],
+          "targetFqdns": ["manage.usgovcloudapi.net"],
           "targetUrls": [],
           "terminateTLS": false,
           "sourceIpGroups": ["{{ipAddressPool}}"]
@@ -601,7 +604,8 @@
           "targetFqdns": [
             "aadcdn.msftauth.net",
             "aadcdn.msftauthimages.us",
-            "*.msauth.net"
+            "*.msauth.net",
+            "*.msauthimages.us"
           ],
           "targetUrls": [],
           "terminateTLS": false,
@@ -622,14 +626,19 @@
           ],
           "fqdnTags": [],
           "webCategories": [],
-          "targetFqdns": ["login.microsoftonline.us", "autologon.microsoft.us"],
+          "targetFqdns": [
+            "login.microsoftonline.us",
+            "autologon.microsoft.us",
+            "login.windows.us"
+          ],
           "targetUrls": [],
           "terminateTLS": false,
           "sourceIpGroups": ["{{ipAddressPool}}"]
         },
         {
           "ruleType": "ApplicationRule",
-          "name": "rbac_pas_windows.net",
+          // https://learn.microsoft.com/entra/identity/devices/howto-vm-sign-in-azure-ad-windows#network-requirements
+          "name": "rbac_flow",
           "protocols": [
             {
               "protocolType": "Http",
@@ -642,7 +651,7 @@
           ],
           "fqdnTags": [],
           "webCategories": [],
-          "targetFqdns": ["pas.windows.net"],
+          "targetFqdns": ["pasff.usgovcloudapi.net"],
           "targetUrls": [],
           "terminateTLS": false,
           "sourceIpGroups": ["{{ipAddressPool}}"]
