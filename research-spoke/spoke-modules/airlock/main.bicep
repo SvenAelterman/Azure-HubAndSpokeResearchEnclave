@@ -147,6 +147,9 @@ module spokeAirlockStorageAccountModule '../storage/main.bicep' = if (!useCentra
     uamiPrincipalId: hubManagementVmUamiPrincipalId
     uamiClientId: hubManagementVmUamiClientId
     roles: roles
+
+    // The airlock storage uses file shares via ADF, so access keys are used
+    allowSharedKeyAccess: true
   }
 }
 
@@ -315,6 +318,8 @@ module publicStorageAccountModule '../storage/storageAccount.bicep' = {
 
     // No identity-based authentication here; there are no file shares
     filesIdentityType: 'None'
+
+    allowSharedKeyAccess: false
   }
 }
 
