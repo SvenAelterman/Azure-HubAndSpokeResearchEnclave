@@ -22,7 +22,6 @@ var scriptArguments = '-DscPath ${dscAgentPackageLocation} -StorageAccountName $
 var file = 'Manual-DSC-Storage-Scripts.ps1'
 
 resource managementVm 'Microsoft.Compute/virtualMachines@2024-03-01' existing = {
-  // TODO: Take as parameter
   name: hubManagementVmName
 }
 
