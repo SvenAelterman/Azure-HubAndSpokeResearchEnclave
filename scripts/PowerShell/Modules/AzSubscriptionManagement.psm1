@@ -161,6 +161,4 @@ Function Register-AzResourceProviderWrapper {
 
 Export-ModuleMember -Function Set-AzContextWrapper
 Export-ModuleMember -Function Register-AzProviderFeatureWrapper
-
-# TODO: Develop module to register resource providers
 Export-ModuleMember -Function Register-AzResourceProviderWrapper
