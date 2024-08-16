@@ -17,11 +17,16 @@ param uamiId string
 param privateEndpointSubnetId string
 param namingStructure string
 param environment string
+@description('Determines if the storage account will allow access using the access keys.')
+param allowSharedKeyAccess bool
 
 @description('An array of valid SMB file share names to create.')
 param fileShareNames array
 @description('An array of valid Blob container names to create.')
 param containerNames array
+
+param createPolicyExemptions bool = false
+param policyAssignmentId string = ''
 
 param debugMode bool = false
 param debugRemoteIp string = ''
@@ -135,6 +140,11 @@ module storageAccountModule 'storageAccount.bicep' = {
     privateEndpointSubnetId: privateEndpointSubnetId
 
     filesIdentityType: filesIdentityType
+
+    allowSharedKeyAccess: allowSharedKeyAccess
+
+    createPolicyExemptions: createPolicyExemptions
+    policyAssignmentId: policyAssignmentId
   }
 }
 

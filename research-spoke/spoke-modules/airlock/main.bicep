@@ -114,7 +114,7 @@ module spokeAirlockStorageAccountModule '../storage/main.bicep' = if (!useCentra
     containerNames: []
     fileShareNames: [airlockFileShareName]
 
-    // Create private endpoints on this storage account
+    // Create private endpoint for file service on this storage account
     privateDnsZonesResourceGroupId: privateDnsZonesResourceGroupId
     privateEndpointSubnetId: privateEndpointSubnetId
     storageAccountPrivateEndpointGroups: ['file']
@@ -147,6 +147,21 @@ module spokeAirlockStorageAccountModule '../storage/main.bicep' = if (!useCentra
     uamiPrincipalId: hubManagementVmUamiPrincipalId
     uamiClientId: hubManagementVmUamiClientId
     roles: roles
+
+    // The airlock storage uses file shares via ADF, so access keys are used
+    allowSharedKeyAccess: true
+  }
+}
+
+// Create a connection string secret for the airlock storage account
+module privateStorageConnStringSecretModule './../security/keyVault-StorageAccountConnString.bicep' = if (!useCentralizedReview) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'kv-secret'), 64)
+  scope: subscription()
+  params: {
+    keyVaultName: keyVaultName
+    keyVaultResourceGroupName: keyVaultResourceGroupName
+    storageAccountName: spokeAirlockStorageAccountModule.outputs.storageAccountName
+    storageAccountResourceGroupName: resourceGroup().name
   }
 }
 
@@ -213,17 +228,18 @@ module adfModule 'adf.bicep' = {
   }
 }
 
-// Grant ADF managed identity access to project Key Vault to retrieve secrets (#12)
-module adfPrjKvRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv.bicep' = {
-  name: replace(deploymentNameStructure, '{rtype}', 'adf-role-prjkv')
-  scope: spokeKeyVaultRg
-  params: {
-    kvName: keyVault.name
-    principalId: adfModule.outputs.principalId
-    roleDefinitionId: roles.KeyVaultSecretsUser
-    principalType: 'ServicePrincipal'
-  }
-}
+// HACK: 2024-08-15: Moved to ADF module where there was already some duplication
+// // Grant ADF managed identity access to project/spoke Key Vault to retrieve secrets (#12)
+// module adfPrjKvRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv.bicep' = {
+//   name: replace(deploymentNameStructure, '{rtype}', 'adf-role-prjkv')
+//   scope: spokeKeyVaultRg
+//   params: {
+//     kvName: keyVault.name
+//     principalId: adfModule.outputs.principalId
+//     roleDefinitionId: roles.KeyVaultSecretsUser
+//     principalType: 'ServicePrincipal'
+//   }
+// }
 
 var airlockStorageAccountName = useCentralizedReview
   ? centralizedModule.outputs.centralAirlockStorageAccountName
@@ -302,6 +318,8 @@ module publicStorageAccountModule '../storage/storageAccount.bicep' = {
 
     // No identity-based authentication here; there are no file shares
     filesIdentityType: 'None'
+
+    allowSharedKeyAccess: false
   }
 }
 
