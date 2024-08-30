@@ -107,7 +107,6 @@ module virtualMachinesModule '../../../shared-modules/compute/virtualMachine.bic
       diskEncryptionSetId: diskEncryptionSetId
       imageReference: imageReference
       nicId: nics[i].id
-      //identityType: logonType == 'entraID' ? 'SystemAssigned' : 'UserAssigned'
       identityType: 'SystemAssigned'
       availabilitySetId: vmCount > 1 ? availabilitySet.id : ''
       deploymentNameStructure: deploymentNameStructure
