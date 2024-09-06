@@ -36,6 +36,11 @@ param storageAccountPrivateEndpointGroups array = [
   'file'
 ]
 
+@description('Role assignements to create on the storage account.')
+param storageAccountRoleAssignments roleAssignmentType
+
+import { roleAssignmentType } from '../../../shared-modules/types/roleAssignment.bicep'
+
 @description('The type of identity to use for identity-based authentication to the file share. When using AD DS, set to None.')
 @allowed(['AADDS', 'AADKERB', 'None'])
 param filesIdentityType string
@@ -145,6 +150,8 @@ module storageAccountModule 'storageAccount.bicep' = {
 
     createPolicyExemptions: createPolicyExemptions
     policyAssignmentId: policyAssignmentId
+
+    storageAccountRoleAssignments: storageAccountRoleAssignments
   }
 }
 

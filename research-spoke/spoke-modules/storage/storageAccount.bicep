@@ -36,6 +36,11 @@ param applyDeleteLock bool = !debugMode
 
 param allowedIpAddresses array = []
 
+@description('Role assignements to create on the storage account.')
+param storageAccountRoleAssignments roleAssignmentType
+
+import { roleAssignmentType } from '../../../shared-modules/types/roleAssignment.bicep'
+
 // If debug mode is enabled, deploy an IP rule for the debug IP address; otherwise, just use the specified list
 // This will automatically deduplicate
 var actualAllowedIpAddresses = debugMode ? concat(allowedIpAddresses, array(debugRemoteIp)) : allowedIpAddresses
@@ -235,11 +240,24 @@ resource policyExemption 'Microsoft.Authorization/policyExemptions@2022-07-01-pr
     description: 'This storage account has the public endpoint disabled.'
     displayName: 'Storage Account virtual network service endpoint exemption - ${storageAccount.name}'
     exemptionCategory: 'Mitigated'
-    //expiresOn: 'string'
     policyAssignmentId: policyAssignmentId
     policyDefinitionReferenceIds: ['storageAccountsShouldUseAVirtualNetworkServiceEndpoint']
   }
 }
+
+// Create any role assignments on the storage account level
+resource accountRoleAssignments 'Microsoft.Authorization/roleAssignments@2022-04-01' = [
+  for (roleAssignment, index) in (storageAccountRoleAssignments ?? []): {
+    name: guid(storageAccount.id, roleAssignment.principalId, roleAssignment.roleDefinitionId)
+    properties: {
+      roleDefinitionId: roleAssignment.roleDefinitionId
+      principalId: roleAssignment.principalId
+      description: roleAssignment.?description
+      principalType: roleAssignment.?principalType
+    }
+    scope: storageAccount
+  }
+]
 
 output id string = storageAccount.id
 output name string = storageAccount.name
