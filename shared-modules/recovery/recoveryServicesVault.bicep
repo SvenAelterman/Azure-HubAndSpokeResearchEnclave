@@ -23,7 +23,7 @@ resource keyVaultResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' e
   scope: subscription()
 }
 
-resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2023-06-01' = {
+resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2024-04-01' = {
   name: vaultName
   location: location
   tags: tags
@@ -41,14 +41,14 @@ resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2023-06-01' = 
     monitoringSettings: {
       azureMonitorAlertSettings: {
         alertsForAllJobFailures: 'Enabled'
-        // Only supported in later API versions
-        // alertsForAllFailoverIssues: 'Enabled'
-        // alertsForAllReplicationIssues: 'Enabled'
+        // Only supported (and required) in later API versions
+        alertsForAllFailoverIssues: 'Enabled'
+        alertsForAllReplicationIssues: 'Enabled'
       }
       classicAlertSettings: {
         alertsForCriticalOperations: 'Disabled'
         // Only supported in later API versions
-        // emailNotificationsForSiteRecovery: 'Disabled'
+        emailNotificationsForSiteRecovery: 'Disabled'
       }
     }
 
@@ -80,6 +80,11 @@ resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2023-06-01' = 
           infrastructureEncryption: 'Enabled'
         }
       : null
+
+    redundancySettings: {
+      standardTierStorageRedundancy: storageType
+      crossRegionRestore: 'Enabled'
+    }
   }
 }
 
@@ -95,19 +100,8 @@ module keyVaultRoleAssignment '../../module-library/roleAssignments/roleAssignme
   }
 }
 
-// Enable cross-region restores, which requires geo-redundant storage
-resource backupStorageConfig 'Microsoft.RecoveryServices/vaults/backupstorageconfig@2023-06-01' = {
-  name: 'vaultstorageconfig'
-  parent: recoveryServicesVault
-  properties: {
-    storageModelType: storageType
-    storageType: storageType
-    crossRegionRestoreFlag: true
-  }
-}
-
 // Enable soft delete settings
-resource backupConfig 'Microsoft.RecoveryServices/vaults/backupconfig@2023-06-01' = {
+resource backupConfig 'Microsoft.RecoveryServices/vaults/backupconfig@2024-04-01' = {
   name: 'vaultconfig'
   location: location
   parent: recoveryServicesVault
@@ -115,8 +109,6 @@ resource backupConfig 'Microsoft.RecoveryServices/vaults/backupconfig@2023-06-01
     enhancedSecurityState: debugMode ? 'Disabled' : 'Enabled'
     isSoftDeleteFeatureStateEditable: true
     softDeleteFeatureState: debugMode ? 'Disabled' : 'Enabled'
-    storageModelType: backupStorageConfig.properties.storageModelType
-    storageType: backupStorageConfig.properties.storageType
   }
 }
 
@@ -142,7 +134,7 @@ var azureBackupRGNamePrefix = '${splitNamingConvention[0]}${sequenceFormatted}-'
 var azureBackupRGNameSuffix = length(splitNamingConvention) > 1 ? splitNamingConvention[1] : ''
 
 // LATER: Parameterize backup policy values
-resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@2023-06-01' = {
+resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@2024-04-01' = {
   name: 'EnhancedPolicy-${workloadName}-${sequenceFormatted}'
   parent: recoveryServicesVault
   properties: {
