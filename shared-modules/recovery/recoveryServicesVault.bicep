@@ -80,14 +80,10 @@ resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2024-04-01' = 
           infrastructureEncryption: 'Enabled'
         }
       : null
-  }
 
-  resource backupStorageConfig 'backupstorageconfig' = {
-    name: 'vaultstorageconfig'
-    properties: {
-      storageModelType: storageType
-      storageType: storageType
-      crossRegionRestoreFlag: true
+    redundancySettings: {
+      standardTierStorageRedundancy: storageType
+      crossRegionRestore: 'Enabled'
     }
   }
 }
@@ -104,17 +100,6 @@ module keyVaultRoleAssignment '../../module-library/roleAssignments/roleAssignme
   }
 }
 
-// Enable cross-region restores, which requires geo-redundant storage
-// resource backupStorageConfig 'Microsoft.RecoveryServices/vaults/backupstorageconfig@2024-04-01' = {
-//   name: 'vaultstorageconfig'
-//   parent: recoveryServicesVault
-//   properties: {
-//     storageModelType: storageType
-//     storageType: storageType
-//     crossRegionRestoreFlag: true
-//   }
-// }
-
 // Enable soft delete settings
 resource backupConfig 'Microsoft.RecoveryServices/vaults/backupconfig@2024-04-01' = {
   name: 'vaultconfig'
@@ -124,8 +109,6 @@ resource backupConfig 'Microsoft.RecoveryServices/vaults/backupconfig@2024-04-01
     enhancedSecurityState: debugMode ? 'Disabled' : 'Enabled'
     isSoftDeleteFeatureStateEditable: true
     softDeleteFeatureState: debugMode ? 'Disabled' : 'Enabled'
-    storageModelType: storageType
-    storageType: storageType
   }
 }
 
