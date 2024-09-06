@@ -583,7 +583,6 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
     keyVaultResourceGroupName: securityRg.name
 
     namingStructure: namingStructure
-    privateStorageAccountConnStringSecretName: privateStorageConnStringSecretModule.outputs.secretName
     spokePrivateStorageAccountName: storageModule.outputs.storageAccountName
     publicStorageAccountAllowedIPs: publicStorageAccountAllowedIPs
 
