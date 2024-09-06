@@ -530,6 +530,8 @@ module managementVmModule './hub-modules/management-vm/main.bicep' = if (logonTy
       : null
 
     logonType: logonType
+
+    diskEncryptionSetId: diskEncryptionSetModule.outputs.id
   }
 }
 
