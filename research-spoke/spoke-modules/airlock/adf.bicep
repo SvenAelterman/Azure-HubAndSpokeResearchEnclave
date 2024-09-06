@@ -7,7 +7,10 @@ param subWorkloadName string
 param privateStorageAcctName string
 param userAssignedIdentityId string
 param userAssignedIdentityPrincipalId string
-param privateStorageAccountConnStringSecretName string
+
+param usePrivateEndpoint bool
+param privateEndpointSubnetId string
+param privateDnsZonesResourceGroupId string
 
 param roles object
 
@@ -60,17 +63,77 @@ resource adf 'Microsoft.DataFactory/factories@2018-06-01' = {
         userAssignedIdentity: encryptionUserAssignedIdentityId
       }
     }
+
+    publicNetworkAccess: usePrivateEndpoint ? 'Disabled' : 'Enabled'
   }
   tags: tags
 }
 
+var dataFactoryPrivateEndpointName = replace(baseName, '{rtype}', 'pe-adf')
+
+resource dataFactoryPrivateEndpoint 'Microsoft.Network/privateEndpoints@2024-01-01' = if (usePrivateEndpoint) {
+  name: dataFactoryPrivateEndpointName
+  location: location
+  properties: {
+    subnet: {
+      id: privateEndpointSubnetId
+    }
+    privateLinkServiceConnections: [
+      {
+        name: dataFactoryPrivateEndpointName
+        properties: {
+          privateLinkServiceId: adf.id
+          groupIds: [
+            'dataFactory'
+          ]
+        }
+      }
+    ]
+  }
+  tags: tags
+}
+
+// az.environment() doesn't have this as of 2024-01-05
+var dataFactoryFqdns = {
+  AzureCloud: 'datafactory.azure.net'
+  AzureUSGovernment: 'datafactory.azure.us'
+}
+
+var dataFactoryFqdn = dataFactoryFqdns[az.environment().name]
+
+var privateDnsZonesSubscriptionId = usePrivateEndpoint ? split(privateDnsZonesResourceGroupId, '/')[2] : ''
+var privateDnsZonesResourceGroupName = usePrivateEndpoint ? split(privateDnsZonesResourceGroupId, '/')[4] : ''
+
+resource dataFactoryPrivateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = if (usePrivateEndpoint) {
+  name: 'default'
+  parent: dataFactoryPrivateEndpoint
+  properties: {
+    privateDnsZoneConfigs: [
+      {
+        // Replace . with - because the config name doesn't suppport .
+        name: 'privatelink-${replace(dataFactoryFqdn, '.', '-')}'
+        properties: {
+          privateDnsZoneId: resourceId(
+            privateDnsZonesSubscriptionId,
+            privateDnsZonesResourceGroupName,
+            'Microsoft.Network/privateDnsZones',
+            'privatelink.${dataFactoryFqdn}'
+          )
+        }
+      }
+    ]
+  }
+}
+
 // Assign roles to UAMI to enable making modifications to ADF (start, stop) and approve private endpoints
+// TODO: Use AVM-style role assignment
 resource adfRoleAssignment 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(adf.id, userAssignedIdentityPrincipalId, roles['Data Factory Contributor'])
+  name: guid(adf.id, userAssignedIdentityPrincipalId, roles.DataFactoryContributor)
   scope: adf
   properties: {
-    roleDefinitionId: roles['Data Factory Contributor']
+    roleDefinitionId: roles.DataFactoryContributor
     principalId: userAssignedIdentityPrincipalId
+    principalType: 'ServicePrincipal'
   }
 }
 
@@ -114,21 +177,6 @@ resource integrationRuntime 'Microsoft.DataFactory/factories/integrationRuntimes
     }
   }
 }
-
-// RBAC role assignment for ADF to Key Vault
-// HACK: 2024-08-15: ADF is granted permissions to the entire Key Vault using Key Vault Secrets User role.
-//         This is no longer needed.
-// module adfKeyVaultRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv-secret.bicep' = {
-//   name: take(replace(deploymentNameStructure, '{rtype}', 'rbac-adf-kv-st'), 64)
-//   scope: resourceGroup(keyVaultResourceGroupName)
-//   params: {
-//     principalId: adf.identity.principalId
-//     roleDefinitionId: roles.KeyVaultSecretsUser
-//     kvName: keyVault.name
-//     secretName: privateStorageAccountConnStringSecretName
-//     principalType: 'ServicePrincipal'
-//   }
-// }
 
 // Grant ADF managed identity access to project/spoke Key Vault to retrieve secrets (#12)
 module adfPrjKvRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv.bicep' = {

@@ -32,8 +32,6 @@ param roles object
 param keyVaultName string
 param keyVaultResourceGroupName string
 
-param privateStorageAccountConnStringSecretName string
-
 @description('The name of the file share used for Airlock export reviews. The same parameter is used regardless of whether the airlock review is centralized or not.')
 param airlockFileShareName string
 
@@ -52,6 +50,7 @@ param adfEncryptionKeyName string
 
 param privateDnsZonesResourceGroupId string
 param privateEndpointSubnetId string
+param usePrivateEndpoints bool
 
 param domainJoinSpokeAirlockStorageAccount bool
 param domainJoinInfo activeDirectoryDomainInfo = {
@@ -222,25 +221,15 @@ module adfModule 'adf.bicep' = {
     keyVaultName: keyVaultName
     keyVaultResourceGroupName: keyVaultResourceGroupName
 
-    privateStorageAccountConnStringSecretName: privateStorageAccountConnStringSecretName
     adfEncryptionKeyName: adfEncryptionKeyName
     encryptionUserAssignedIdentityId: encryptionUamiId
     encryptionKeyVaultUri: encryptionKeyVaultUri
+
+    usePrivateEndpoint: usePrivateEndpoints
+    privateEndpointSubnetId: usePrivateEndpoints ? privateEndpointSubnetId : ''
+    privateDnsZonesResourceGroupId: usePrivateEndpoints ? privateDnsZonesResourceGroupId : ''
   }
 }
-
-// HACK: 2024-08-15: Moved to ADF module where there was already some duplication
-// // Grant ADF managed identity access to project/spoke Key Vault to retrieve secrets (#12)
-// module adfPrjKvRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv.bicep' = {
-//   name: replace(deploymentNameStructure, '{rtype}', 'adf-role-prjkv')
-//   scope: spokeKeyVaultRg
-//   params: {
-//     kvName: keyVault.name
-//     principalId: adfModule.outputs.principalId
-//     roleDefinitionId: roles.KeyVaultSecretsUser
-//     principalType: 'ServicePrincipal'
-//   }
-// }
 
 var airlockStorageAccountName = useCentralizedReview
   ? centralizedModule.outputs.centralAirlockStorageAccountName
