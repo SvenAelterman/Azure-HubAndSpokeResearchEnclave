@@ -50,6 +50,7 @@ param adfEncryptionKeyName string
 
 param privateDnsZonesResourceGroupId string
 param privateEndpointSubnetId string
+param usePrivateEndpoints bool
 
 param domainJoinSpokeAirlockStorageAccount bool
 param domainJoinInfo activeDirectoryDomainInfo = {
@@ -223,6 +224,10 @@ module adfModule 'adf.bicep' = {
     adfEncryptionKeyName: adfEncryptionKeyName
     encryptionUserAssignedIdentityId: encryptionUamiId
     encryptionKeyVaultUri: encryptionKeyVaultUri
+
+    usePrivateEndpoint: usePrivateEndpoints
+    privateEndpointSubnetId: usePrivateEndpoints ? privateEndpointSubnetId : ''
+    privateDnsZonesResourceGroupId: usePrivateEndpoints ? privateDnsZonesResourceGroupId : ''
   }
 }
 

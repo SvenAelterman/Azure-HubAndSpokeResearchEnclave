@@ -595,10 +595,9 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 
     researcherAadObjectId: researcherEntraIdObjectId
 
-    // TODO: Only if usePrivateEndpoint is true
-    privateDnsZonesResourceGroupId: hubPrivateDnsZonesResourceGroupId
+    privateDnsZonesResourceGroupId: usePrivateEndpoints ? hubPrivateDnsZonesResourceGroupId : ''
     // If airlock review is centralized, then we don't need to create a private endpoint because we don't create a storage account
-    privateEndpointSubnetId: !isAirlockReviewCentralized
+    privateEndpointSubnetId: !isAirlockReviewCentralized && usePrivateEndpoints
       ? networkModule.outputs.createdSubnets.privateEndpointSubnet.id
       : ''
 
@@ -618,6 +617,8 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
     storageAccountRoleAssignments: [
       storageAccountReaderRoleAssignmentForResearcherGroup
     ]
+
+    usePrivateEndpoints: usePrivateEndpoints
   }
 }
 
