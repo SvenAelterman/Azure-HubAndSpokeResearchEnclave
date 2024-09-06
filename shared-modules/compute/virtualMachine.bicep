@@ -27,6 +27,7 @@ param domainJoinInfo activeDirectoryDomainInfo = {
 @allowed(['ad', 'entraID'])
 param logonType string
 
+@allowed(['Windows', 'Linux'])
 param osType string = 'Windows'
 param intuneEnrollment bool
 
@@ -41,13 +42,17 @@ import { identity } from '../types/identity.bicep'
 
 var intuneMdmId = '0000000a-0000-0000-c000-000000000000'
 
+// This tag will direct Guest Configuration to use the Azure virtual IP for compliance updates,
+// rather than public endpoints of various storage accounts.
+var actualVmTags = union(tags, { EnablePrivateNetworkGC: 'TRUE' })
+
 // TODO: Move NIC creation to this module
 
 // Create the virtual machine resource
 resource virtualMachine 'Microsoft.Compute/virtualMachines@2023-03-01' = {
   name: virtualMachineName
   location: location
-  tags: tags
+  tags: actualVmTags
   properties: {
     // TODO: Consider adding licenseType: 'Windows_Client' (when using default image)
     // LATER: Support for hibernation: additionalCapabilities: { hibernationEnabled: }

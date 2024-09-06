@@ -37,15 +37,19 @@ Param(
     [Parameter(Mandatory, Position = 4)]
     [string]$ResourceGroupName,
     [Parameter(Position = 5)]
-    [string]$Environment = 'AzureCloud'
+    [string]$Environment = 'AzureCloud',
+    [string]$TemplateFile = './main.bicep'
 )
 
 # Define common parameters for the New-AzDeployment cmdlet
 [hashtable]$CmdLetParameters = @{
-    TemplateFile          = './main.bicep'
-    TemplateParameterFile = $TemplateParameterFile
-    Location              = $Location
-    ResourceGroupName     = $ResourceGroupName
+    TemplateFile      = $TemplateFile
+    Location          = $Location
+    ResourceGroupName = $ResourceGroupName
+}
+
+if ($TemplateParameterFile) {
+    $CmdLetParameters.Add('TemplateParameterFile', $TemplateParameterFile)
 }
 
 [string]$WorkloadName = 'researchvm'

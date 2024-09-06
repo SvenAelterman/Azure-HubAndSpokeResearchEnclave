@@ -32,6 +32,8 @@ param imageReference imageReferenceType = {
   version: 'latest'
   sku: 'win11-23h2-avd-m365'
 }
+
+@allowed(['Windows', 'Linux'])
 param osType string
 
 @allowed(['ad', 'entraID'])
@@ -44,6 +46,8 @@ param backupPolicyName string
 param recoveryServicesVaultId string
 
 param deploymentTime string = utcNow()
+
+param shortcutTargetPath string = ''
 
 import { activeDirectoryDomainInfo } from '../../../shared-modules/types/activeDirectoryDomainInfo.bicep'
 import { imageReferenceType } from '../../../shared-modules/types/imageReferenceType.bicep'
@@ -103,7 +107,6 @@ module virtualMachinesModule '../../../shared-modules/compute/virtualMachine.bic
       diskEncryptionSetId: diskEncryptionSetId
       imageReference: imageReference
       nicId: nics[i].id
-      //identityType: logonType == 'entraID' ? 'SystemAssigned' : 'UserAssigned'
       identityType: 'SystemAssigned'
       availabilitySetId: vmCount > 1 ? availabilitySet.id : ''
       deploymentNameStructure: deploymentNameStructure
@@ -124,5 +127,26 @@ module virtualMachinesModule '../../../shared-modules/compute/virtualMachine.bic
       virtualMachineName: vmNames[i]
       osType: osType
     }
+  }
+]
+
+// Create a shortcut on the desktop to the research data file share
+resource shortcutExtension 'Microsoft.Compute/virtualMachines/extensions@2023-09-01' = [
+  for i in range(0, vmCount): if (!empty(shortcutTargetPath)) {
+    name: '${vmNames[i]}/CustomScriptExtension'
+    location: location
+    tags: tags
+    properties: {
+      publisher: 'Microsoft.Compute'
+      type: 'CustomScriptExtension'
+      typeHandlerVersion: '1.10'
+      autoUpgradeMinorVersion: true
+      settings: {
+        commandToExecute: 'powershell -ExecutionPolicy Unrestricted ${replace(loadTextContent('../../../scripts/PowerShell/Scripts/RVM/Windows/New-FileShareDesktopShortcut.ps1'), '$TargetPath', shortcutTargetPath)}'
+      }
+    }
+    dependsOn: [
+      virtualMachinesModule[i]
+    ]
   }
 ]
