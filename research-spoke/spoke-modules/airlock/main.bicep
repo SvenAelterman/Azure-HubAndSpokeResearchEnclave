@@ -72,16 +72,17 @@ param subWorkloadName string = 'airlock'
 @allowed(['AADDS', 'AADKERB', 'None'])
 param filesIdentityType string
 
+@description('Role assignements to create on the storage account.')
+param storageAccountRoleAssignments roleAssignmentType
+
+import { roleAssignmentType } from '../../../shared-modules/types/roleAssignment.bicep'
+
 param debugMode bool = false
 param debugRemoteIp string = ''
 
 // Types
 
 import { activeDirectoryDomainInfo } from '../../../shared-modules/types/activeDirectoryDomainInfo.bicep'
-
-// TODO: Pass in useCmk parameter
-
-// LATER: Enable export without review (without Logic App, etc.)
 
 // Get a reference to the already existing private storage account for this spoke
 // Assumed in the same resource group
@@ -320,6 +321,8 @@ module publicStorageAccountModule '../storage/storageAccount.bicep' = {
     filesIdentityType: 'None'
 
     allowSharedKeyAccess: false
+
+    storageAccountRoleAssignments: storageAccountRoleAssignments
   }
 }
 

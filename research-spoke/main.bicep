@@ -386,6 +386,15 @@ var hubManagementVmSubscriptionId = split(hubManagementVmId, '/')[2]
 var hubManagementVmResourceGroupName = split(hubManagementVmId, '/')[4]
 var hubManagementVmName = split(hubManagementVmId, '/')[8]
 
+import { roleAssignmentType } from '../shared-modules/types/roleAssignment.bicep'
+
+// Create a role assignment representation for researchers to see the storage accounts
+var storageAccountReaderRoleAssignmentForResearcherGroup = {
+  roleDefinitionId: rolesModule.outputs.roles.Reader
+  principalId: researcherEntraIdObjectId
+  description: 'Read access to the storage account is required to use Azure Storage Explorer.'
+}
+
 // Deploy the project's private storage account
 module storageModule './spoke-modules/storage/main.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'storage'), 64)
@@ -440,6 +449,10 @@ module storageModule './spoke-modules/storage/main.bicep' = {
 
     createPolicyExemptions: createPolicyExemptions
     policyAssignmentId: policyAssignmentId
+
+    storageAccountRoleAssignments: [
+      storageAccountReaderRoleAssignmentForResearcherGroup
+    ]
   }
 }
 
@@ -602,6 +615,10 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
     hubManagementVmSubscriptionId: hubManagementVmSubscriptionId
     hubManagementVmUamiClientId: hubManagementVmUamiClientId
     hubManagementVmUamiPrincipalId: hubManagementVmUamiPrincipalId
+
+    storageAccountRoleAssignments: [
+      storageAccountReaderRoleAssignmentForResearcherGroup
+    ]
   }
 }
 
