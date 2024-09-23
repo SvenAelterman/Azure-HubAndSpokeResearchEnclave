@@ -40,6 +40,7 @@ resource firewallPublicIps 'Microsoft.Network/publicIPAddresses@2022-09-01' = [
       publicIPAddressVersion: 'IPv4'
       publicIPAllocationMethod: 'Static'
     }
+    zones: pickZones('Microsoft.Network', 'publicIPAddresses', location, 3)
     tags: tags
   }
 ]
@@ -255,6 +256,8 @@ resource firewall 'Microsoft.Network/azureFirewalls@2022-01-01' = {
       tier: firewallTier
     }
   }
+
+  zones: pickZones('Microsoft.Network', 'azureFirewalls', location, 3)
 
   tags: tags
 
