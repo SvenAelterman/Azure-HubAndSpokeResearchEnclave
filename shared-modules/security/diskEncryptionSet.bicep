@@ -1,5 +1,5 @@
 param keyVaultId string
-param keyUrl string
+param keyUrl string = ''
 param location string
 param name string
 param tags object

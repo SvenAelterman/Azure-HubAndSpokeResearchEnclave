@@ -1,0 +1,57 @@
+---
+# Synopsis: Ignore NSG lateral movement for management subnet NSGs such as Azure Bastion.
+apiVersion: github.com/microsoft/PSRule/v1
+kind: SuppressionGroup
+metadata:
+  name: Org.Azure.PermitOutboundManagement
+spec:
+  rule:
+    - PSRule.Rules.Azure\Azure.NSG.LateralTraversal
+  if:
+    # Suppress NSGs with the following strings in their name
+    allOf:
+      - type: "."
+        in:
+          - Microsoft.Network/networkSecurityGroups
+
+      - name: "."
+        contains:
+          - AzureBastionSubnet
+          - ManagementSubnet
+
+# ---
+# # Synopsis: Ignore NSG lateral movement for AVD subnet in the hub.
+# apiVersion: github.com/microsoft/PSRule/v1
+# kind: SuppressionGroup
+# metadata:
+#   name: Org.Azure.PermitOutboundManagementAvdHub
+# spec:
+#   rule:
+#     - PSRule.Rules.Azure\Azure.NSG.LateralTraversal
+#   if:
+#     # Suppress NSGs with the following strings in their name
+#     allOf:
+#       - type: "."
+#         in:
+#           - Microsoft.Network/networkSecurityGroups
+
+#       - field: "tags.AvdPlacement"
+#         equals: "Hub"
+
+---
+# Synopsis: Ignore Firewall threat detection mode for Basic SKU firewalls.
+apiVersion: github.com/microsoft/PSRule/v1
+kind: SuppressionGroup
+metadata:
+  name: Org.Azure.NoThreatDetectionModeForBasicSKU
+spec:
+  rule:
+    - PSRule.Rules.Azure\Azure.Firewall.PolicyMode
+  if:
+    allOf:
+      - type: "."
+        in:
+          - Microsoft.Network/firewallPolicies
+
+      - field: "properties.sku.tier"
+        equals: "Basic"

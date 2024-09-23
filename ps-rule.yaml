@@ -26,3 +26,10 @@ configuration:
   AZURE_BICEP_CHECK_TOOL: true
   AZURE_BICEP_MINIMUM_VERSION: "0.28.1"
   AZURE_BICEP_FILE_EXPANSION_TIMEOUT: 20
+
+# Configure binding options
+# Required even when using suppression groups and no custom rules
+binding:
+  targetType:
+    - "resourceType"
+    - "type"

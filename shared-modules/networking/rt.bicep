@@ -1,5 +1,5 @@
 param location string
-param rtName string
+param rtName string = ''
 param routes array
 
 param tags object = {}
