@@ -8,7 +8,9 @@ param vmCount int
 param vmSize string
 
 param diskEncryptionSetId string
+
 param subnetId string
+param applicationSecurityGroupId string = ''
 
 @secure()
 param vmLocalAdminUsername string
@@ -87,6 +89,13 @@ resource nics 'Microsoft.Network/networkInterfaces@2022-11-01' = [
             subnet: {
               id: subnetId
             }
+            applicationSecurityGroups: !empty(applicationSecurityGroupId)
+              ? [
+                  {
+                    id: applicationSecurityGroupId
+                  }
+                ]
+              : []
           }
         }
       ]

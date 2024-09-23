@@ -58,6 +58,11 @@ param workspaceFriendlyName string = 'N/A'
 // @description('The Azure resource ID of the standalone image to use for new session hosts. If blank, will use the Windows 11 23H2 O365 Gen 2 Marketplace image.')
 // param sessionHostVmImageResourceId string = ''
 
+@description('If true, will create policy exemptions for resources and policy definitions that are not compliant due to issues with common Azure built-in compliance policy initiatives.')
+param createPolicyExemptions bool = false
+@description('Required if policy exemptions must be created.')
+param policyAssignmentId string = ''
+
 @secure()
 param sessionHostLocalAdminUsername string
 @secure()
@@ -381,6 +386,15 @@ var hubManagementVmSubscriptionId = split(hubManagementVmId, '/')[2]
 var hubManagementVmResourceGroupName = split(hubManagementVmId, '/')[4]
 var hubManagementVmName = split(hubManagementVmId, '/')[8]
 
+import { roleAssignmentType } from '../shared-modules/types/roleAssignment.bicep'
+
+// Create a role assignment representation for researchers to see the storage accounts
+var storageAccountReaderRoleAssignmentForResearcherGroup = {
+  roleDefinitionId: rolesModule.outputs.roles.Reader
+  principalId: researcherEntraIdObjectId
+  description: 'Read access to the storage account is required to use Azure Storage Explorer.'
+}
+
 // Deploy the project's private storage account
 module storageModule './spoke-modules/storage/main.bicep' = {
   name: take(replace(deploymentNameStructure, '{rtype}', 'storage'), 64)
@@ -429,6 +443,16 @@ module storageModule './spoke-modules/storage/main.bicep' = {
     uamiPrincipalId: hubManagementVmUamiPrincipalId
     uamiClientId: hubManagementVmUamiClientId
     roles: rolesModule.outputs.roles
+
+    // The private storage uses file shares via ADF, so access keys are used
+    allowSharedKeyAccess: true
+
+    createPolicyExemptions: createPolicyExemptions
+    policyAssignmentId: policyAssignmentId
+
+    storageAccountRoleAssignments: [
+      storageAccountReaderRoleAssignmentForResearcherGroup
+    ]
   }
 }
 
@@ -559,7 +583,6 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
     keyVaultResourceGroupName: securityRg.name
 
     namingStructure: namingStructure
-    privateStorageAccountConnStringSecretName: privateStorageConnStringSecretModule.outputs.secretName
     spokePrivateStorageAccountName: storageModule.outputs.storageAccountName
     publicStorageAccountAllowedIPs: publicStorageAccountAllowedIPs
 
@@ -572,10 +595,9 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 
     researcherAadObjectId: researcherEntraIdObjectId
 
-    // TODO: Only if usePrivateEndpoint is true
-    privateDnsZonesResourceGroupId: hubPrivateDnsZonesResourceGroupId
+    privateDnsZonesResourceGroupId: usePrivateEndpoints ? hubPrivateDnsZonesResourceGroupId : ''
     // If airlock review is centralized, then we don't need to create a private endpoint because we don't create a storage account
-    privateEndpointSubnetId: !isAirlockReviewCentralized
+    privateEndpointSubnetId: !isAirlockReviewCentralized && usePrivateEndpoints
       ? networkModule.outputs.createdSubnets.privateEndpointSubnet.id
       : ''
 
@@ -591,6 +613,12 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
     hubManagementVmSubscriptionId: hubManagementVmSubscriptionId
     hubManagementVmUamiClientId: hubManagementVmUamiClientId
     hubManagementVmUamiPrincipalId: hubManagementVmUamiPrincipalId
+
+    storageAccountRoleAssignments: [
+      storageAccountReaderRoleAssignmentForResearcherGroup
+    ]
+
+    usePrivateEndpoints: usePrivateEndpoints
   }
 }
 
@@ -638,3 +666,9 @@ output backupPolicyName string = recoveryServicesVaultModule.outputs.backupPolic
 output diskEncryptionSetId string = diskEncryptionSetModule.outputs.id
 output computeSubnetId string = networkModule.outputs.createdSubnets.computeSubnet.id
 output computeResourceGroupName string = computeRg.name
+// Double up the \ in the output so it can be pasted easily into a bicepparam file
+output shortcutTargetPath string = replace(
+  '${storageModule.outputs.storageAccountFileShareBaseUncPath}${fileShareNames.shared}',
+  '\\',
+  '\\\\'
+)

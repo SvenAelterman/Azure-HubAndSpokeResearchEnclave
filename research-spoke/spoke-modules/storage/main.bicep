@@ -17,11 +17,16 @@ param uamiId string
 param privateEndpointSubnetId string
 param namingStructure string
 param environment string
+@description('Determines if the storage account will allow access using the access keys.')
+param allowSharedKeyAccess bool
 
 @description('An array of valid SMB file share names to create.')
 param fileShareNames array
 @description('An array of valid Blob container names to create.')
 param containerNames array
+
+param createPolicyExemptions bool = false
+param policyAssignmentId string = ''
 
 param debugMode bool = false
 param debugRemoteIp string = ''
@@ -30,6 +35,11 @@ param storageAccountPrivateEndpointGroups array = [
   'blob'
   'file'
 ]
+
+@description('Role assignements to create on the storage account.')
+param storageAccountRoleAssignments roleAssignmentType
+
+import { roleAssignmentType } from '../../../shared-modules/types/roleAssignment.bicep'
 
 @description('The type of identity to use for identity-based authentication to the file share. When using AD DS, set to None.')
 @allowed(['AADDS', 'AADKERB', 'None'])
@@ -135,6 +145,13 @@ module storageAccountModule 'storageAccount.bicep' = {
     privateEndpointSubnetId: privateEndpointSubnetId
 
     filesIdentityType: filesIdentityType
+
+    allowSharedKeyAccess: allowSharedKeyAccess
+
+    createPolicyExemptions: createPolicyExemptions
+    policyAssignmentId: policyAssignmentId
+
+    storageAccountRoleAssignments: storageAccountRoleAssignments
   }
 }
 
@@ -167,3 +184,4 @@ module domainJoinModule 'domainJoin.bicep' = if (domainJoin && length(fileShareN
 
 output storageAccountName string = storageAccountModule.outputs.name
 output storageAccountId string = storageAccountModule.outputs.id
+output storageAccountFileShareBaseUncPath string = '\\\\${storageAccountModule.outputs.primaryFileFqdn}\\'

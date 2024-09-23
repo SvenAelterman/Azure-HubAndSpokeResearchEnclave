@@ -102,8 +102,63 @@ Function Register-AzProviderFeatureWrapper {
     }
 }
 
+<#
+    .SYNOPSIS
+    Registers an Azure subscription for a resource provider feature.
+
+    .DESCRIPTION
+    Determines if the specified feature for the specified resource provider namespace is registered. If not, it will register the feature and wait for registration to complete.
+
+    .NOTES
+    The current Azure context will be used to determine the subscription to register the feature in.
+#>
+Function Register-AzResourceProviderWrapper {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory, Position = 1)]
+        [string]$ProviderNamespace
+    )
+
+    # Because this function is in a module, $VerbosePreference doesn't carry over from the caller
+    # See https://stackoverflow.com/a/44902512/816663
+    if (-Not $PSBoundParameters.ContainsKey('Verbose')) {
+        $VerbosePreference = $PSCmdlet.GetVariableValue('VerbosePreference')
+    }
+
+    # Get the feature's current registration state
+    $Provider = Get-AzResourceProvider -ProviderNamespace $ProviderNamespace
+    $AzContext = Get-AzContext
+    
+    # If the feature is not registered yet
+    if ($Provider.RegistrationState -ne 'Registered') {
+        Write-Warning "About to register provider '$($Provider.ProviderNamespace)' in subscription '$($AzContext.Subscription.Name)'. Expect a delay while the feature registration is completed."
+        $Status = Register-AzResourceProvider -ProviderNamespace $ProviderNamespace
+
+        if ($Status.RegistrationState -eq 'Registering') {
+            [double]$PercentComplete = 1
+            Write-Progress -Activity "Registering provider '$($Status.ProviderNamespace)'" -Id 0 -PercentComplete $PercentComplete -SecondsRemaining -1
+
+            while ($Status.RegistrationState -eq 'Registering') {
+                Start-Sleep -Seconds 30
+                $Status = Get-AzResourceProvider -ProviderNamespace $ProviderNamespace
+                # Assuming 20 minutes (max); so each 30 seconds is 2.5% complete
+                $PercentComplete += 2.5
+                Write-Progress -Activity "Registering provider '$($Status.ProviderNamespace)'" -Id 0 -PercentComplete $PercentComplete -SecondsRemaining -1
+            }
+		
+            $PercentComplete = 100
+            Write-Progress -Activity "Registering provider '$($Status.ProviderNamespace)'" -Id 0 -PercentComplete $PercentComplete -SecondsRemaining 0
+            Write-Information "Provider registration complete."
+        }
+        else {
+            Write-Error "Provider registration failed: $($Status.RegistrationState)"
+        }
+    }
+    else {
+        Write-Verbose "Provider '$($Provider.ProviderNamespace)' is already registered in subscription '$($AzContext.Subscription.Name)'."
+    }
+}
+
 Export-ModuleMember -Function Set-AzContextWrapper
 Export-ModuleMember -Function Register-AzProviderFeatureWrapper
-
-# TODO: Develop module to register resource providers
-#Export-ModuleMember -Function Register-AzSubscriptionResourceProvider
+Export-ModuleMember -Function Register-AzResourceProviderWrapper

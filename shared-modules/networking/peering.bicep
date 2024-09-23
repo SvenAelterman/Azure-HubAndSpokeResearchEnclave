@@ -4,9 +4,10 @@ param remoteVNetId string
 param localVNetFriendlyName string
 param remoteVNetFriendlyName string
 
+param allowVirtualNetworkAccess bool = true
+// This should generally be true because this is a spoke that might receive traffic forwarded by the FW from other spokes
 param allowForwardedTraffic bool = true
 param allowGatewayTransit bool = false
-param allowVirtualNetworkAccess bool = true
 param useRemoteGateways bool = false
 
 var peeringName = take('peering-${localVNetFriendlyName}-to-${remoteVNetFriendlyName}', 80)

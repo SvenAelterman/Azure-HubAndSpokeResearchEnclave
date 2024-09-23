@@ -134,6 +134,13 @@ param isAirlockReviewCentralized bool = false
 @description('The date and time seed for the expiration of the encryption keys.')
 param encryptionKeyExpirySeed string = utcNow()
 
+/*
+ * Image Builder
+ */
+
+@description('The subscription ID where the image build will take place. This might need to be different from the hub subscription because image building might not meet compliance requirements.')
+param imageBuildSubscriptionId string = subscription().subscriptionId
+
 // TODO: If no custom DNS IPs are specified, create a private DNS zone for the virtual network for VM auto-registration
 
 /*
@@ -431,7 +438,10 @@ module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHost
     hostPoolToken: avdJumpBoxModule.outputs.hostPoolRegistrationToken
     logonType: logonType
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'avd')
+
     subnetId: networkModule.outputs.createdSubnets.AvdSubnet.id
+    applicationSecurityGroupId: networkModule.outputs.avdSubnetApplicationSecurityGroupId
+
     vmCount: jumpBoxSessionHostCount
     vmLocalAdminUsername: sessionHostLocalAdminUsername
     vmLocalAdminPassword: sessionHostLocalAdminPassword
@@ -458,13 +468,6 @@ module avdJumpBoxSessionHostModule '../shared-modules/virtualDesktop/sessionHost
   }
 }
 
-resource imagingRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
-  #disable-next-line BCP334
-  name: take(replace(rgNamingStructure, '{subWorkloadName}', 'imaging'), 64)
-  location: location
-  tags: actualTags
-}
-
 // Default image that will be used to create an Image Template
 var sampleImageTemplateImageReference = {
   publisher: 'microsoftwindowsdesktop'
@@ -474,7 +477,7 @@ var sampleImageTemplateImageReference = {
 }
 
 module imagingModule 'hub-modules/imaging/main.bicep' = {
-  scope: imagingRg
+  scope: subscription(imageBuildSubscriptionId)
   name: take(replace(deploymentNameStructure, '{rtype}', 'imaging'), 64)
   params: {
     location: location
@@ -487,6 +490,8 @@ module imagingModule 'hub-modules/imaging/main.bicep' = {
     enableAvmTelemetry: enableAvmTelemetry
     imageReference: sampleImageTemplateImageReference
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'imaging')
+
+    resourceGroupName: take(replace(rgNamingStructure, '{subWorkloadName}', 'imaging'), 64)
   }
 }
 
@@ -506,6 +511,7 @@ module managementVmModule './hub-modules/management-vm/main.bicep' = if (logonTy
     tags: actualTags
     namingStructure: replace(resourceNamingStructure, '{subWorkloadName}', 'mgmtvm')
     subnetId: networkModule.outputs.createdSubnets.ManagementSubnet.id
+    applicationSecurityGroupId: networkModule.outputs.managementSubnetApplicationSecurityGroupId
 
     vmLocalAdminUsername: sessionHostLocalAdminUsername
     vmLocalAdminPassword: sessionHostLocalAdminPassword
@@ -524,6 +530,8 @@ module managementVmModule './hub-modules/management-vm/main.bicep' = if (logonTy
       : null
 
     logonType: logonType
+
+    diskEncryptionSetId: diskEncryptionSetModule.outputs.id
   }
 }
 
@@ -540,6 +548,8 @@ output hubPrivateDnsZonesResourceGroupId string = empty(existingPrivateDnsZonesR
 output managementVmId string = managementVmModule.outputs.vmId
 output managementVmUamiPrincipalId string = managementVmModule.outputs.uamiPrincipalId
 output managementVmUamiClientId string = managementVmModule.outputs.uamiClientId
+
+output imageDefinitionId string = imagingModule.outputs.imageDefinitionId
 
 // TODO: Output the resource ID of the remote application group for the remote desktop application
 // To be used in the spoke for setting permissions

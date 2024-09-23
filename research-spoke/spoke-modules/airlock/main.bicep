@@ -32,8 +32,6 @@ param roles object
 param keyVaultName string
 param keyVaultResourceGroupName string
 
-param privateStorageAccountConnStringSecretName string
-
 @description('The name of the file share used for Airlock export reviews. The same parameter is used regardless of whether the airlock review is centralized or not.')
 param airlockFileShareName string
 
@@ -52,6 +50,7 @@ param adfEncryptionKeyName string
 
 param privateDnsZonesResourceGroupId string
 param privateEndpointSubnetId string
+param usePrivateEndpoints bool
 
 param domainJoinSpokeAirlockStorageAccount bool
 param domainJoinInfo activeDirectoryDomainInfo = {
@@ -72,16 +71,17 @@ param subWorkloadName string = 'airlock'
 @allowed(['AADDS', 'AADKERB', 'None'])
 param filesIdentityType string
 
+@description('Role assignements to create on the storage account.')
+param storageAccountRoleAssignments roleAssignmentType
+
+import { roleAssignmentType } from '../../../shared-modules/types/roleAssignment.bicep'
+
 param debugMode bool = false
 param debugRemoteIp string = ''
 
 // Types
 
 import { activeDirectoryDomainInfo } from '../../../shared-modules/types/activeDirectoryDomainInfo.bicep'
-
-// TODO: Pass in useCmk parameter
-
-// LATER: Enable export without review (without Logic App, etc.)
 
 // Get a reference to the already existing private storage account for this spoke
 // Assumed in the same resource group
@@ -114,7 +114,7 @@ module spokeAirlockStorageAccountModule '../storage/main.bicep' = if (!useCentra
     containerNames: []
     fileShareNames: [airlockFileShareName]
 
-    // Create private endpoints on this storage account
+    // Create private endpoint for file service on this storage account
     privateDnsZonesResourceGroupId: privateDnsZonesResourceGroupId
     privateEndpointSubnetId: privateEndpointSubnetId
     storageAccountPrivateEndpointGroups: ['file']
@@ -147,6 +147,21 @@ module spokeAirlockStorageAccountModule '../storage/main.bicep' = if (!useCentra
     uamiPrincipalId: hubManagementVmUamiPrincipalId
     uamiClientId: hubManagementVmUamiClientId
     roles: roles
+
+    // The airlock storage uses file shares via ADF, so access keys are used
+    allowSharedKeyAccess: true
+  }
+}
+
+// Create a connection string secret for the airlock storage account
+module privateStorageConnStringSecretModule './../security/keyVault-StorageAccountConnString.bicep' = if (!useCentralizedReview) {
+  name: take(replace(deploymentNameStructure, '{rtype}', 'kv-secret'), 64)
+  scope: subscription()
+  params: {
+    keyVaultName: keyVaultName
+    keyVaultResourceGroupName: keyVaultResourceGroupName
+    storageAccountName: spokeAirlockStorageAccountModule.outputs.storageAccountName
+    storageAccountResourceGroupName: resourceGroup().name
   }
 }
 
@@ -176,6 +191,17 @@ module uamiProjectStorageRoleAssignmentModule '../../../module-library/roleAssig
   }
 }
 
+// Assign UAMI a role to approve the airlock storage account's private endpoint (GitHub issue #95)
+module uamiAirlockStorageRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-st.bicep' = if (!useCentralizedReview) {
+  name: replace(deploymentNameStructure, '{rtype}', 'uami-airlock-role2')
+  params: {
+    principalId: uamiModule.outputs.principalId
+    roleDefinitionId: roles.StorageAccountContributor
+    storageAccountName: spokeAirlockStorageAccountModule.outputs.storageAccountName
+    principalType: 'ServicePrincipal'
+  }
+}
+
 // Azure Data Factory resource and contents
 module adfModule 'adf.bicep' = {
   name: replace(deploymentNameStructure, '{rtype}', 'adf')
@@ -195,22 +221,13 @@ module adfModule 'adf.bicep' = {
     keyVaultName: keyVaultName
     keyVaultResourceGroupName: keyVaultResourceGroupName
 
-    privateStorageAccountConnStringSecretName: privateStorageAccountConnStringSecretName
     adfEncryptionKeyName: adfEncryptionKeyName
     encryptionUserAssignedIdentityId: encryptionUamiId
     encryptionKeyVaultUri: encryptionKeyVaultUri
-  }
-}
 
-// Grant ADF managed identity access to project Key Vault to retrieve secrets (#12)
-module adfPrjKvRoleAssignmentModule '../../../module-library/roleAssignments/roleAssignment-kv.bicep' = {
-  name: replace(deploymentNameStructure, '{rtype}', 'adf-role-prjkv')
-  scope: spokeKeyVaultRg
-  params: {
-    kvName: keyVault.name
-    principalId: adfModule.outputs.principalId
-    roleDefinitionId: roles.KeyVaultSecretsUser
-    principalType: 'ServicePrincipal'
+    usePrivateEndpoint: usePrivateEndpoints
+    privateEndpointSubnetId: usePrivateEndpoints ? privateEndpointSubnetId : ''
+    privateDnsZonesResourceGroupId: usePrivateEndpoints ? privateDnsZonesResourceGroupId : ''
   }
 }
 
@@ -291,6 +308,10 @@ module publicStorageAccountModule '../storage/storageAccount.bicep' = {
 
     // No identity-based authentication here; there are no file shares
     filesIdentityType: 'None'
+
+    allowSharedKeyAccess: false
+
+    storageAccountRoleAssignments: storageAccountRoleAssignments
   }
 }
 
@@ -409,6 +430,14 @@ var privateEndpointIdsToApprove = join(
   '\',\''
 )
 
+var privateLinkResourceIds = join(
+  [
+    privateManagedPrivateEndpointModule.outputs.privateLinkResourceId
+    airlockManagedPrivateEndpointModule.outputs.privateLinkResourceId
+  ],
+  '\',\''
+)
+
 // Start the triggers in the Data Factory
 module startTriggerDeploymentScriptModule 'deploymentScript.bicep' = {
   name: replace(deploymentNameStructure, '{rtype}', 'dplscr-StartTriggers')
@@ -432,7 +461,7 @@ module approvePrivateEndpointDeploymentScriptModule 'deploymentScript.bicep' = {
     location: location
     subWorkloadName: 'ApprovePep'
     namingStructure: namingStructure
-    arguments: '-PrivateLinkResourceIds @(\'${privateManagedPrivateEndpointModule.outputs.privateLinkResourceId}\', \'${airlockManagedPrivateEndpointModule.outputs.privateLinkResourceId}\') -PrivateEndpointIds @(\'${privateEndpointIdsToApprove}\') -SubscriptionId ${subscription().subscriptionId}'
+    arguments: '-PrivateLinkResourceIds @(\'${privateLinkResourceIds}\') -PrivateEndpointIds @(\'${privateEndpointIdsToApprove}\') -SubscriptionId ${subscription().subscriptionId}'
     scriptContent: loadTextContent('./content/ApproveManagedPrivateEndpoint.ps1')
     userAssignedIdentityId: uamiModule.outputs.id
     tags: tags
