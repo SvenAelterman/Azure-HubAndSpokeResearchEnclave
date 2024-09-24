@@ -16,6 +16,72 @@ param location string = resourceGroup().location
 param tags object
 param storageType string = 'GeoRedundant'
 
+param backupTime string = '2023-12-31T08:00:00.000Z'
+param dailyRetentionDurationCount int = 8
+param weeklyRetentionDurationCount int = 6
+param monthlyRetentionDurationCount int = 13
+param weeklyRetentionDays ('Sunday' | 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday')[] = [
+  'Sunday'
+]
+param timeZone string
+
+param protectedAzureFileShares string[]
+
+@description('The schedule policy used for all custom backup policies.')
+param schedulePolicy object = {
+  schedulePolicyType: 'SimpleSchedulePolicyV2'
+  scheduleRunFrequency: 'Hourly'
+  hourlySchedule: {
+    interval: 4
+    scheduleWindowStartTime: backupTime
+    scheduleWindowDuration: 4
+  }
+  dailySchedule: null
+  weeklySchedule: null
+}
+
+@description('The retention policy used for all custom backup policies.')
+param retentionPolicy object = {
+  retentionPolicyType: 'LongTermRetentionPolicy'
+
+  dailySchedule: {
+    retentionTimes: [backupTime]
+    retentionDuration: {
+      count: dailyRetentionDurationCount
+      durationType: 'Days'
+    }
+  }
+
+  weeklySchedule: {
+    daysOfTheWeek: weeklyRetentionDays
+    retentionTimes: [backupTime]
+    retentionDuration: {
+      count: weeklyRetentionDurationCount
+      durationType: 'Weeks'
+    }
+  }
+
+  monthlySchedule: {
+    retentionScheduleFormatType: 'Daily'
+    retentionScheduleDaily: {
+      daysOfTheMonth: [
+        {
+          date: 1
+          isLast: false
+        }
+      ]
+    }
+    retentionTimes: [backupTime]
+    retentionDuration: {
+      count: monthlyRetentionDurationCount
+      durationType: 'Months'
+    }
+    retentionScheduleWeekly: null
+  }
+
+  yearlySchedule: null
+}
+
 var vaultName = replace(namingStructure, '{rtype}', 'rsv')
 
 resource keyVaultResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
@@ -112,9 +178,6 @@ resource backupConfig 'Microsoft.RecoveryServices/vaults/backupconfig@2024-04-01
   }
 }
 
-// Create a new enhanced policy to use custom schedule
-var backupTime = '2023-12-31T08:00:00.000Z'
-
 // Break up the naming convention on the sequence placeholder to use for the backup RG name
 var processNamingConventionPlaceholders = replace(
   replace(
@@ -133,77 +196,65 @@ var splitNamingConvention = split(processNamingConventionPlaceholders, '{seq}')
 var azureBackupRGNamePrefix = '${splitNamingConvention[0]}${sequenceFormatted}-'
 var azureBackupRGNameSuffix = length(splitNamingConvention) > 1 ? splitNamingConvention[1] : ''
 
-// LATER: Parameterize backup policy values
-resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@2024-04-01' = {
-  name: 'EnhancedPolicy-${workloadName}-${sequenceFormatted}'
-  parent: recoveryServicesVault
-  properties: {
-    backupManagementType: 'AzureIaasVM'
-
-    instantRPDetails: {
-      // Following the naming convention of the other resource groups
-      azureBackupRGNamePrefix: azureBackupRGNamePrefix
-      azureBackupRGNameSuffix: azureBackupRGNameSuffix
-    }
-
-    instantRpRetentionRangeInDays: 2
-    timeZone: 'Central Standard Time'
-    policyType: 'V2'
-
-    schedulePolicy: {
-      schedulePolicyType: 'SimpleSchedulePolicyV2'
-      scheduleRunFrequency: 'Hourly'
-      hourlySchedule: {
-        interval: 4
-        scheduleWindowStartTime: backupTime
-        scheduleWindowDuration: 4
-      }
-      dailySchedule: null
-      weeklySchedule: null
-    }
-
-    retentionPolicy: {
-      retentionPolicyType: 'LongTermRetentionPolicy'
-
-      dailySchedule: {
-        retentionTimes: [backupTime]
-        retentionDuration: {
-          count: 8
-          durationType: 'Days'
-        }
-      }
-
-      weeklySchedule: {
-        retentionTimes: [backupTime]
-        retentionDuration: {
-          count: 6
-          durationType: 'Weeks'
-        }
-        daysOfTheWeek: ['Sunday']
-      }
-
-      monthlySchedule: {
-        retentionTimes: [backupTime]
-        retentionDuration: {
-          count: 13
-          durationType: 'Months'
-        }
-        retentionScheduleFormatType: 'Daily'
-        retentionScheduleDaily: {
-          daysOfTheMonth: [
-            {
-              date: 1
-              isLast: false
-            }
-          ]
-        }
-        retentionScheduleWeekly: null
-      }
-
-      yearlySchedule: null
-    }
+// Create a single Azure File backup policy, even if there are multiple file shares or storage accounts
+module azureFileBackupPolicy 'backupPolicy.bicep' = if (length(protectedAzureFileShares) > 0) {
+  name: 'AzureFileShares'
+  params: {
+    vaultName: recoveryServicesVault.name
+    policyName: 'AzureFileSharesPolicy-${workloadName}-${sequenceFormatted}'
+    backupManagementType: 'AzureStorage'
+    workloadType: 'AzureFileShare'
+    timeZone: timeZone
+    retentionPolicy: retentionPolicy
+    schedulePolicy: schedulePolicy
   }
 }
+
+module azureIaasVmBackupPolicy 'backupPolicy.bicep' = {
+  name: 'AzureIaasVM'
+  params: {
+    vaultName: recoveryServicesVault.name
+    policyName: 'EnhancedPolicy-${workloadName}-${sequenceFormatted}'
+    backupManagementType: 'AzureIaasVm'
+    timeZone: timeZone
+    retentionPolicy: retentionPolicy
+    schedulePolicy: schedulePolicy
+    azureBackupRGNamePrefix: azureBackupRGNamePrefix
+    azureBackupRGNameSuffix: azureBackupRGNameSuffix
+  }
+}
+
+// resource enhancedBackupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@2024-04-01' = {
+//   name: 'EnhancedPolicy-${workloadName}-${sequenceFormatted}'
+//   parent: recoveryServicesVault
+//   properties: {
+//     backupManagementType: 'AzureIaasVM'
+
+//     instantRPDetails: {
+//       // Following the naming convention of the other resource groups
+//       azureBackupRGNamePrefix: azureBackupRGNamePrefix
+//       azureBackupRGNameSuffix: azureBackupRGNameSuffix
+//     }
+
+//     instantRpRetentionRangeInDays: 2
+//     timeZone: timeZone
+//     policyType: 'V2'
+
+//     schedulePolicy: {
+//       schedulePolicyType: 'SimpleSchedulePolicyV2'
+//       scheduleRunFrequency: 'Hourly'
+//       hourlySchedule: {
+//         interval: 4
+//         scheduleWindowStartTime: backupTime
+//         scheduleWindowDuration: 4
+//       }
+//       dailySchedule: null
+//       weeklySchedule: null
+//     }
+
+//     retentionPolicy: retentionPolicy
+//   }
+// }
 
 // Lock the Recovery Services Vault to prevent accidental deletion
 resource lock 'Microsoft.Authorization/locks@2020-05-01' = if (!debugMode) {
@@ -216,7 +267,7 @@ resource lock 'Microsoft.Authorization/locks@2020-05-01' = if (!debugMode) {
 
 output id string = recoveryServicesVault.id
 output name string = recoveryServicesVault.name
-output backupPolicyName string = enhancedBackupPolicy.name
+output backupPolicyName string = azureIaasVmBackupPolicy.outputs.name
 
 // For debug purposes only
 output backupResourceGroupNameStructure string = '${azureBackupRGNamePrefix}{N}${azureBackupRGNameSuffix}'

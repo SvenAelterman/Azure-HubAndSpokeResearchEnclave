@@ -644,6 +644,11 @@ module recoveryServicesVaultModule '../shared-modules/recovery/recoveryServicesV
     roles: rolesModule.outputs.roles
     keyVaultResourceGroupName: keyVaultModule.outputs.resourceGroupName
     keyVaultName: keyVaultModule.outputs.keyVaultName
+
+    timeZone: 'Central Standard Time'
+    protectedAzureFileShares: [
+      fileShareNames.shared
+    ]
   }
 }
 
