@@ -42,7 +42,7 @@ var kvResourceGroupName = kvIdSplit[4]
 var keyVaultName = kvIdSplit[8]
 
 // Added here because we can't assume that the Key Vault is in the same resource group as the Disk Encryption Set
-resource kvRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+resource kvRg 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: kvResourceGroupName
   scope: subscription(kvSubscriptionId)
 }

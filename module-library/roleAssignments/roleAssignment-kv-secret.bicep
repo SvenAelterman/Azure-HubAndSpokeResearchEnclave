@@ -4,11 +4,11 @@ param roleDefinitionId string
 param secretName string
 param principalType string = ''
 
-resource kv 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
+resource kv 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: kvName
 }
 
-resource secret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' existing = {
+resource secret 'Microsoft.KeyVault/vaults/secrets@2023-02-01' existing = {
   name: secretName
   parent: kv
 }

@@ -6,11 +6,11 @@ param secretValue string
 
 param valueDescription string = ''
 
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
+resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: keyVaultName
 }
 
-resource keyVaultSecret 'Microsoft.KeyVault/vaults/secrets@2022-07-01' = {
+resource keyVaultSecret 'Microsoft.KeyVault/vaults/secrets@2023-02-01' = {
   name: secretName
   parent: keyVault
   properties: {

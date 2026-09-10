@@ -100,7 +100,7 @@ resource privateStorageAccount 'Microsoft.Storage/storageAccounts@2021-02-01' ex
 }
 
 // Get a reference to the already existing Key Vault resource group for this spoke
-resource spokeKeyVaultRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+resource spokeKeyVaultRg 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: keyVaultResourceGroupName
   scope: subscription()
 }
@@ -403,7 +403,7 @@ module eventGridForPrivateModule 'eventGrid.bicep' = {
   }
 }
 
-resource keyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
+resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: keyVaultName
   scope: spokeKeyVaultRg
 }

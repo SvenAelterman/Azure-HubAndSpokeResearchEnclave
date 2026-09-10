@@ -2,7 +2,7 @@ param uamiName string
 param principalId string
 param roleDefinitionId string
 
-resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2022-01-31-preview' existing = {
+resource uami 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
   name: uamiName
 }
 

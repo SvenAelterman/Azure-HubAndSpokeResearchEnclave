@@ -3,7 +3,7 @@ param principalId string
 // Default: AcrPull
 param roleDefinitionId string = subscriptionResourceId('Microsoft.Authorization/roleDefinitions', '7f951dda-4ed3-4680-a7ca-43fe172d538d')
 
-resource cr 'Microsoft.ContainerRegistry/registries@2022-02-01-preview' existing = {
+resource cr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
   name: crName
 }
 

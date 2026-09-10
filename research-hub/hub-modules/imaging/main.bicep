@@ -15,7 +15,7 @@ param enableAvmTelemetry bool = true
 param sampleImageName string = 'sample'
 
 // Create a resource group
-resource imagingRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
+resource imagingRg 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   #disable-next-line BCP334
   name: resourceGroupName
   location: location

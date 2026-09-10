@@ -190,7 +190,7 @@ resource storageAccountLock 'Microsoft.Authorization/locks@2020-05-01' = if (app
 
 // Create one private endpoint per specified sub resource (group)
 @batchSize(1)
-resource privateEndpoints 'Microsoft.Network/privateEndpoints@2022-09-01' = [
+resource privateEndpoints 'Microsoft.Network/privateEndpoints@2024-01-01' = [
   for pe in privateEndpointInfo: {
     name: replace(namingStructure, '{rtype}', 'st-pe-${pe.subResourceName}')
     location: location
@@ -216,7 +216,7 @@ resource privateEndpoints 'Microsoft.Network/privateEndpoints@2022-09-01' = [
 
 // Register each private endpoint in the respective private DNS zone
 @batchSize(1)
-resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2022-09-01' = [
+resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2024-01-01' = [
   for (pe, i) in privateEndpointInfo: {
     name: 'default'
     parent: privateEndpoints[i]
@@ -234,7 +234,7 @@ resource privateEndpointDnsGroup 'Microsoft.Network/privateEndpoints/privateDnsZ
   }
 ]
 
-resource policyExemption 'Microsoft.Authorization/policyExemptions@2022-07-01-preview' = if (createPolicyExemptions && !empty(policyAssignmentId)) {
+resource policyExemption 'Microsoft.Authorization/policyExemptions@2023-04-01' = if (createPolicyExemptions && !empty(policyAssignmentId)) {
   name: '${storageAccount.name}-exemption'
   scope: storageAccount
   properties: {

@@ -20,17 +20,17 @@ var centralAirlockKeyVaultSubscriptionId = split(centralAirlockResources.keyVaul
 var centralAirlockKeyVaultResourceGroupName = split(centralAirlockResources.keyVaultId, '/')[4]
 var centralAirlockKeyVaultName = split(centralAirlockResources.keyVaultId, '/')[8]
 
-resource centralAirlockKeyVaultRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+resource centralAirlockKeyVaultRg 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: centralAirlockKeyVaultResourceGroupName
   scope: subscription(centralAirlockKeyVaultSubscriptionId)
 }
 
-resource centralAirlockKeyVault 'Microsoft.KeyVault/vaults@2022-07-01' existing = {
+resource centralAirlockKeyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: centralAirlockKeyVaultName
   scope: centralAirlockKeyVaultRg
 }
 
-resource centralAirlockRg 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+resource centralAirlockRg 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: centralAirlockResourceGroupName
   scope: subscription(centralAirlockSubscriptionId)
 }

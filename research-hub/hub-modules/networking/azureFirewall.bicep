@@ -30,7 +30,7 @@ var createManagementIPConfiguration = (firewallTier == 'Basic' || forcedTunnelin
 var publicIpCount = (firewallTier == 'Basic' && !forcedTunneling) ? 2 : 1
 
 // Create the public IP address(es) for the Firewall
-resource firewallPublicIps 'Microsoft.Network/publicIPAddresses@2022-09-01' = [
+resource firewallPublicIps 'Microsoft.Network/publicIPAddresses@2023-06-01' = [
   for i in range(0, publicIpCount): {
     name: replace(namingStructure, '{rtype}', 'pip-fw${i}')
     location: location

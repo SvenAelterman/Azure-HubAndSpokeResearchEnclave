@@ -9,11 +9,11 @@ param keyVaultName string
 
 param whichKey int = 1
 
-resource storageAccountResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+resource storageAccountResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: storageAccountResourceGroupName
 }
 
-resource keyVaultResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+resource keyVaultResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: keyVaultResourceGroupName
 }
 

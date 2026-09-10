@@ -8,7 +8,7 @@ param registrationEnabled bool = false
 param tags object
 param deploymentNameStructure string
 
-resource dnsZone 'Microsoft.Network/privateDnsZones@2020-06-01' = {
+resource dnsZone 'Microsoft.Network/privateDnsZones@2024-06-01' = {
   name: zoneName
   location: 'global'
   tags: tags

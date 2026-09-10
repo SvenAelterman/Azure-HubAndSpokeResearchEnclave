@@ -7,7 +7,7 @@ param tags object = {}
 
 var baseName = !empty(subWorkloadName) ? replace(namingStructure, '{subWorkloadName}', subWorkloadName) : replace(namingStructure, '-{subWorkloadName}', '')
 
-resource eventGridSystemTopic 'Microsoft.EventGrid/systemTopics@2021-06-01-preview' = {
+resource eventGridSystemTopic 'Microsoft.EventGrid/systemTopics@2023-12-01' = {
   name: replace(baseName, '{rtype}', 'evgt')
   location: location
   properties: {

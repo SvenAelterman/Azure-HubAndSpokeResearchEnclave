@@ -88,13 +88,13 @@ module uamiRoleAssignmentModule '../../../module-library/roleAssignments/roleAss
 }
 
 // Ensure the private DNS zones for storage exist and reference them
-resource hubPrivateDnsZoneResourceGroup 'Microsoft.Resources/resourceGroups@2023-07-01' existing = {
+resource hubPrivateDnsZoneResourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' existing = {
   name: privateDnsZonesResourceGroupName
   scope: subscription(privateDnsZonesSubscriptionId)
 }
 
 // Find the existing (in the hub) Private DNS Zones for storage account private endpoints
-resource privateDnsZones 'Microsoft.Network/privateDnsZones@2020-06-01' existing = [
+resource privateDnsZones 'Microsoft.Network/privateDnsZones@2024-06-01' existing = [
   for subResource in storageAccountPrivateEndpointGroups: {
     name: 'privatelink.${subResource}.${az.environment().suffixes.storage}'
     scope: hubPrivateDnsZoneResourceGroup
