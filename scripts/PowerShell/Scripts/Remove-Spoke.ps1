@@ -113,13 +113,13 @@ try {
         exit
     }
     
-    # If -WhatIf is used, output the number of resource groups found
-    if ($WhatIfPreference) {
+    # If -WhatIf or $Force are used, output the number of resource groups found
+    if ($WhatIfPreference -or $Force) {
         Write-Host $Msg1
     }
 
     if ($Force) {
-        Write-Verbose "Force switch specified. Proceeding with deletion of resources."
+        Write-Warning "Force switch specified. Proceeding with deletion of resources."
     }   
 
     ################################################################################
@@ -147,6 +147,9 @@ try {
             -ResourceGroup $BackupResourceGroupName -SubscriptionId $TargetSubscriptionId `
             -WhatIf:$WhatIfPreference -Verbose:$VerbosePreference
     }
+    else {
+        Write-Verbose "No Recovery Services Vault named '$RecoveryServicesVaultName' found in resource group '$BackupResourceGroupName'."
+    }
 
     ################################################################################
     # REMOVE THE DATA FACTORY MANAGED PRIVATE ENDPOINTS
@@ -163,6 +166,9 @@ try {
         & ./DataFactory/Remove-ManagedPrivateEndpoints.ps1 -DataFactoryName $DataFactoryName `
             -ResourceGroup $StorageResourceGroupName -SubscriptionId $TargetSubscriptionId `
             -WhatIf:$WhatIfPreference -Verbose:$VerbosePreference
+    }
+    else {
+        Write-Verbose "No Data Factory named '$DataFactoryName' found in resource group '$StorageResourceGroupName'."
     }
 
     ################################################################################
@@ -208,11 +214,18 @@ try {
     
         $AzContext = Set-AzContextWrapper -SubscriptionId $HubSubscriptionId -Environment $CloudEnvironment -Tenant $Tenant
 
-        # Remove peering explicitly from hub
-        Get-AzVirtualNetworkPeering -ResourceGroupName $HubResourceGroupName -VirtualNetworkName $HubVirtualNetworkName | `
-                # Find the peering using the peering state (to confirm it's disconnected) and the remote virtual network ID
-                Where-Object { $_.PeeringState -eq 'Disconnected' -and $_.RemoteVirtualNetwork.Id -eq $SpokeVirtualNetworkResourceId } | `
-                Remove-AzVirtualNetworkPeering -Force -Verbose:$VerbosePreference
+        $HubRg = Get-AzResourceGroup -Name $HubResourceGroupName -ErrorAction SilentlyContinue
+        
+        if ($HubRg) {
+            # Remove peering explicitly from hub
+            Get-AzVirtualNetworkPeering -ResourceGroupName $HubResourceGroupName -VirtualNetworkName $HubVirtualNetworkName | `
+                    # Find the peering using the peering state (to confirm it's disconnected) and the remote virtual network ID
+                    Where-Object { $_.PeeringState -eq 'Disconnected' -and $_.RemoteVirtualNetwork.Id -eq $SpokeVirtualNetworkResourceId } | `
+                    Remove-AzVirtualNetworkPeering -Force -Verbose:$VerbosePreference
+        }
+        else {
+            Write-Host "Hub resource group '$HubResourceGroupName' not found in hub subscription '$HubSubscriptionId'. Skipping peering removal.`n💡 Maybe the hub was already deleted?"
+        }
     }
     else {
         Write-Warning "The value found in the parameter file for 'hubVNetResourceId' ('$HubVirtualNetworkId') is not a valid Azure virtual network resource ID."
@@ -223,7 +236,20 @@ try {
 catch {
     Write-Host "`n❌ An error occurred: $($_)"
     Write-Host $_.ScriptStackTrace
-    Write-Host "In context $AzContext"
+
+    $ContextForError = $AzContext
+    if (-not $ContextForError) {
+        $ContextForError = Get-AzContext -ErrorAction SilentlyContinue
+    }
+
+    if ($ContextForError -and $ContextForError.Subscription) {
+        Write-Host "In subscription: $($ContextForError.Subscription.Id) - $($ContextForError.Subscription.Name)"
+    }
+    else {
+        Write-Host "In subscription: unavailable"
+    }
+
+    exit 1
 }
 finally {
     Write-Verbose "Setting Azure context back to the original subscription..."

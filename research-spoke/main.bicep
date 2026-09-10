@@ -230,7 +230,7 @@ param debugPrincipalId string = az.deployer().objectId
 //----------------------------- START TYPES --------------------------------
 
 import * as backupPolicyTypes from '../shared-modules/types/backupPolicyTypes.bicep'
-import { roleAssignmentType } from '../shared-modules/types/roleAssignment.bicep'
+//import { roleAssignmentType } from '../shared-modules/types/roleAssignment.bicep'
 
 //----------------------------- END TYPES ----------------------------------
 
@@ -265,7 +265,7 @@ var namingStructure = replace(
 // Naming structure for components that don't consider subWorkloadName
 var namingStructureNoSub = replace(namingStructure, '-{subWorkloadName}', '')
 // The naming structure of Resource Groups
-var rgNamingStructure = replace(replace(namingStructure, '{rtype}', 'rg-{rgname}'), '-{subWorkloadName}', '')
+var rgNamingStructure = replace(replace(namingStructure, '{rtype}', 'rg-{rgName}'), '-{subWorkloadName}', '')
 
 //var hubAirlockSubscriptionId = split(hubAirlockStorageAccountId, '/')[2]
 
@@ -289,37 +289,38 @@ var fileShareNames = {
 
 // Load RBAC roles
 module rolesModule '../module-library/roles.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'roles'), 64)
 }
 
 // Create the resource groups
 resource securityRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
-  name: replace(rgNamingStructure, '{rgname}', 'security')
+  name: replace(rgNamingStructure, '{rgName}', 'security')
   location: location
   tags: actualTags
 }
 
 resource storageRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
-  name: replace(rgNamingStructure, '{rgname}', 'storage')
+  name: replace(rgNamingStructure, '{rgName}', 'storage')
   location: location
   tags: actualTags
 }
 
 resource networkRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
-  name: replace(rgNamingStructure, '{rgname}', 'network')
+  name: replace(rgNamingStructure, '{rgName}', 'network')
   location: location
   tags: actualTags
 }
 
 resource backupRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
-  name: replace(rgNamingStructure, '{rgname}', 'backup')
+  name: replace(rgNamingStructure, '{rgName}', 'backup')
   location: location
   tags: actualTags
 }
 
 // Create a resource group for additional compute resources (like shared VMs)
 resource computeRg 'Microsoft.Resources/resourceGroups@2023-07-01' = {
-  name: replace(rgNamingStructure, '{rgname}', 'compute')
+  name: replace(rgNamingStructure, '{rgName}', 'compute')
   location: location
   tags: actualTags
 }
@@ -345,6 +346,7 @@ var subnets = {
 
 // Create networking resources
 module networkModule '../shared-modules/networking/main.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'network'), 64)
   scope: networkRg
   params: {
@@ -371,6 +373,7 @@ var allPrivateLinkDnsZoneNames = loadJsonContent('../shared-modules/dns/allPriva
 // This could be simplified (perhaps) by using a Azure Private DNS Resolver service in the research hub if not using custom DNS.
 module privateLinkDnsZoneLinkModule '../shared-modules/dns/privateDnsZoneVNetLink.bicep' = [
   for (zoneName, i) in allPrivateLinkDnsZoneNames: if (length(customDnsIps) == 0) {
+    #disable-next-line BCP334
     name: take(replace(deploymentNameStructure, '{rtype}', 'dns-link-${i}'), 64)
     scope: hubDnsZoneResourceGroup
     params: {
@@ -384,10 +387,12 @@ module privateLinkDnsZoneLinkModule '../shared-modules/dns/privateDnsZoneVNetLin
 
 // Enable Defender for Cloud and Workload Protection Plans
 module defenderPlansModule './spoke-modules/security/defenderPlans.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'defenderplans'), 64)
 }
 
 module keyVaultNameModule '../module-library/createValidAzResourceName.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'kv-name'), 64)
   scope: securityRg
   params: {
@@ -402,6 +407,7 @@ module keyVaultNameModule '../module-library/createValidAzResourceName.bicep' = 
 
 // Create a Key Vault for the customer-managed keys and more
 module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'keyVault'), 64)
   scope: securityRg
   params: {
@@ -427,6 +433,7 @@ module keyVaultModule '../shared-modules/security/keyVault.bicep' = {
 
 // Create encryption keys in the Key Vault for data factory, storage accounts, disks, and recovery services vault
 module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' = if (useCMK) {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'keys'), 64)
   scope: securityRg
   params: {
@@ -436,9 +443,10 @@ module encryptionKeysModule '../shared-modules/security/encryptionKeys.bicep' = 
   }
 }
 
-var kvEncryptionKeys = useCMK ? reduce(encryptionKeysModule.outputs.keys, {}, (cur, next) => union(cur, next)) : null
+var kvEncryptionKeys = useCMK ? reduce(encryptionKeysModule.?outputs.keys!, {}, (cur, next) => union(cur, next)) : null
 
 module uamiModule '../shared-modules/security/uami.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'uami'), 64)
   scope: securityRg
   params: {
@@ -449,6 +457,7 @@ module uamiModule '../shared-modules/security/uami.bicep' = {
 }
 
 module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'uami-kv-rbac'), 64)
   scope: securityRg
   params: {
@@ -461,12 +470,13 @@ module uamiKvRbacModule '../module-library/roleAssignments/roleAssignment-kv.bic
 
 // Create the disk encryption set with system-assigned MI and grant access to Key Vault
 module diskEncryptionSetModule '../shared-modules/security/diskEncryptionSet.bicep' = if (useCMK) {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'diskEnc'), 64)
   scope: securityRg
   params: {
     keyVaultId: keyVaultModule.outputs.id
     // TODO: Validate WithVersion is needed
-    keyUrl: kvEncryptionKeys.diskEncryptionSet.keyUriWithVersion
+    keyUrl: kvEncryptionKeys.?diskEncryptionSet.keyUriWithVersion
     uamiId: uamiModule.outputs.id
     location: location
     name: replace(namingStructureNoSub, '{rtype}', 'des')
@@ -491,6 +501,7 @@ var storageAccountReaderRoleAssignmentForResearcherGroup = {
 
 // Deploy the project's private storage account
 module storageModule './spoke-modules/storage/main.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'storage'), 64)
   scope: storageRg
   params: {
@@ -559,6 +570,7 @@ var storageAccountDomainJoinInfo = {
 
 // Set blob and SMB permissions for group on private storage
 module privateStContainerRbacModule '../module-library/roleAssignments/roleAssignment-st-container.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'st-priv-ct-rbac'), 64)
   scope: storageRg
   params: {
@@ -598,7 +610,7 @@ module vdiModule '../shared-modules/virtualDesktop/main.bicep' = if (useSessionH
   #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'vdi'), 64)
   params: {
-    resourceGroupName: replace(rgNamingStructure, '{rgname}', 'avd')
+    resourceGroupName: replace(rgNamingStructure, '{rgName}', 'avd')
     tags: actualTags
     location: location
 
@@ -623,7 +635,7 @@ module vdiModule '../shared-modules/virtualDesktop/main.bicep' = if (useSessionH
     sessionHostLocalAdminUsername: sessionHostLocalAdminUsername
     sessionHostLocalAdminPassword: sessionHostLocalAdminPassword
     useCMK: useCMK
-    diskEncryptionSetId: diskEncryptionSetModule.outputs.id
+    diskEncryptionSetId: useCMK ? diskEncryptionSetModule.?outputs.id! : ''
     sessionHostCount: sessionHostCount
 
     backupPolicyName: recoveryServicesVaultModule.outputs.vmBackupPolicyName
@@ -642,6 +654,7 @@ module vdiModule '../shared-modules/virtualDesktop/main.bicep' = if (useSessionH
 
 // Store the file share connection string of the private storage account in Key Vault
 module privateStorageConnStringSecretModule './spoke-modules/security/keyVault-StorageAccountConnString.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'kv-secret'), 64)
   scope: subscription()
   params: {
@@ -655,6 +668,7 @@ module privateStorageConnStringSecretModule './spoke-modules/security/keyVault-S
 // Deploy the spoke airlock components
 // Depending on the value of isAirlockCentralized, the spoke will either use the hub's airlock review storage account and review VM or deploy its own
 module airlockModule './spoke-modules/airlock/main.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'airlock'), 64)
   scope: storageRg
   params: {
@@ -742,6 +756,7 @@ module airlockModule './spoke-modules/airlock/main.bicep' = {
 
 // Create a Recovery Services Vault and default backup policy
 module recoveryServicesVaultModule '../shared-modules/recovery/recoveryServicesVault.bicep' = {
+  #disable-next-line BCP334
   name: take(replace(deploymentNameStructure, '{rtype}', 'recovery'), 64)
   scope: backupRg
   params: {
@@ -749,7 +764,7 @@ module recoveryServicesVaultModule '../shared-modules/recovery/recoveryServicesV
     tags: actualTags
 
     useCMK: useCMK
-    encryptionKeyUri: useCMK ? kvEncryptionKeys.rsv.keyUri : ''
+    encryptionKeyUri: useCMK ? kvEncryptionKeys.?rsv.keyUri : ''
 
     environment: environment
     namingConvention: namingConvention
@@ -796,7 +811,7 @@ output recoveryServicesVaultId string = recoveryServicesVaultModule.outputs.id
 @description('The name of the backup policy used for Azure VM backups in the spoke.')
 output vmBackupPolicyName string = recoveryServicesVaultModule.outputs.vmBackupPolicyName
 @description('The Azure resource ID of the disk encryption set used for customer-managed key encryption of managed disks in the spoke.')
-output diskEncryptionSetId string = diskEncryptionSetModule.outputs.id
+output diskEncryptionSetId string = useCMK ? diskEncryptionSetModule.?outputs.id! : ''
 @description('The Azure resource ID of the ComputeSubnet.')
 output computeSubnetId string = networkModule.outputs.createdSubnets.computeSubnet.id
 @description('The resource group name of the compute resource group.')

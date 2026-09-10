@@ -1,0 +1,25 @@
+{
+  // Use IntelliSense to learn about possible attributes.
+  // Hover to view descriptions of existing attributes.
+  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "PowerShell: Launch Current File with parameters",
+      "type": "PowerShell",
+      "request": "launch",
+      "script": "${file}",
+      // NOTE: Replace the placeholder values below with your local Azure resource group,
+      // vault name, and subscription ID in your own environment.
+        "<your-resource-group>",
+        "-ResourceGroup",
+        "<your-vault-name>",
+        "-VaultName",
+        "<your-subscription-id>",
+        "-SubscriptionId",
+        "YOUR_SUBSCRIPTION_ID",
+        "-Verbose"
+      ]
+    }
+  ]
+}

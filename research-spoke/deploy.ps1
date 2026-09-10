@@ -29,9 +29,7 @@
 #>
 
 #Requires -Version 7.4
-# Temporary version restriction due to Az PowerShell issue 26752
-# https://github.com/Azure/azure-powershell/issues/26752
-#Requires -Modules @{ ModuleName="Az.Resources"; MaximumVersion="7.6.0" }
+#Requires -Modules Az.Resources
 #Requires -PSEdition Core
 
 [CmdletBinding()]

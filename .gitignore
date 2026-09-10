@@ -11,3 +11,5 @@
 # Compiled Bicep, compiled Bicepparam
 main.json
 main.*.json
+
+**/AzPortalRefScript/
