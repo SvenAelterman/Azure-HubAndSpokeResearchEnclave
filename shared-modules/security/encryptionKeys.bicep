@@ -61,6 +61,7 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-02-01' existing = {
   name: keyVaultName
 }
 
+@onlyIfNotExists()
 resource keys 'Microsoft.KeyVault/vaults/keys@2023-02-01' = [for key in keysToCreate: {
   name: key
   parent: keyVault
