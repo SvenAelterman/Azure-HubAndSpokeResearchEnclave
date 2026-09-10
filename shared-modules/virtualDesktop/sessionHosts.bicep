@@ -27,7 +27,7 @@ param ADDomainInfo activeDirectoryDomainInfo = {
 
 param hostPoolName string
 @secure()
-param hostPoolToken string
+param hostPoolToken string?
 
 param imageReference imageReferenceType = {
   // No image resource ID specified; use a default image
@@ -57,6 +57,9 @@ import { imageReferenceType } from '../types/imageReferenceType.bicep'
 // Latest as of 2023-12-29
 var configurationFileName = 'Configuration_1.0.02544.255.zip'
 var artifactsLocation = 'https://wvdportalstorageblob.blob.${az.environment().suffixes.storage}/galleryartifacts/${configurationFileName}'
+
+// 2026-08-26: https://wvdportalstorageblob.blob.core.windows.net/galleryartifacts/Configuration_1.0.03519.1433.zip
+// https://wvd.hosting.portal.azure.net/wvd/Content/1.0.03519.1433/ArmTemplates/AutomatedHostpool/nestedTemplates/managedDisks-galleryvm.json
 
 var intuneMdmId = '0000000a-0000-0000-c000-000000000000'
 

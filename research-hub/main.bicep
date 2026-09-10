@@ -415,6 +415,8 @@ var wvdPrivateLinkDnsZoneId = resourceId(
   wvdPrivateLinkDnsZoneName
 )
 
+// LATER: Move to using virtualDesktop/main.bicep module
+// LATER: Move to supporting session host configuration
 // Deploy Azure Virtual Desktop resources if AVD is used as jump hosts into the spokes
 module avdJumpBoxModule '../shared-modules/virtualDesktop/avd.bicep' = if (!researchVmsAreSessionHosts) {
   scope: avdRg
@@ -438,6 +440,8 @@ module avdJumpBoxModule '../shared-modules/virtualDesktop/avd.bicep' = if (!rese
 
     remoteAppApplicationGroupInfo: [remoteDesktopAppGroupInfo]
     usePrivateLinkForHostPool: usePrivateEndpoints
+
+    enableAvmTelemetry: enableAvmTelemetry
   }
 }
 

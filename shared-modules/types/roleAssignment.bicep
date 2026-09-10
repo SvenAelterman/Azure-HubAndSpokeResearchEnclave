@@ -2,6 +2,7 @@
  * This type is designed to be compatible with that of Azure Verified Modules for future adoption.
  */
 
+@description('The role assignments to create for Azure resources.')
 @export()
 type roleAssignmentType = {
   // @description('Optional. The name (as GUID) of the role assignment. If not provided, a GUID will be generated.')
